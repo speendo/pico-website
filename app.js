@@ -11,6 +11,13 @@
   const navList = document.getElementById('nav-list');
   const configForm = document.getElementById('config-form');
   const statusBar = document.getElementById('status-bar');
+  const footer = document.querySelector('footer');
+  const btnSaveApply = document.getElementById('btn-save-apply');
+  const btnApply = document.getElementById('btn-apply');
+  const btnReset = document.getElementById('btn-reset');
+  const pendingCount = document.getElementById('pending-count');
+
+  let baseline = null;
 
   let components = [];
 
@@ -24,8 +31,134 @@
     statusBar.style.color = '';
   }
 
+  function serialize() {
+    const data = {};
+    for (const comp of components) {
+      if (!comp.fields) continue;
+      for (const field of comp.fields) {
+        const key = field[0], type = field[1], name = comp.id + '.' + key;
+        const el = configForm.querySelector('[name="' + name + '"]');
+        if (!el) continue;
+        data[name] = type === 'checkbox' || type === 'switch' ? el.checked
+          : type === 'radio' ? (configForm.querySelector('[name="' + name + '"]:checked') || {}).value || null
+          : el.value;
+      }
+    }
+    return data;
+  }
+
+  function setBaseline() {
+    baseline = serialize();
+  }
+
+  function getPending() {
+    if (!baseline) return {};
+    const current = serialize();
+    const changes = {};
+    for (const key in current) {
+      if (current[key] !== baseline[key]) changes[key] = current[key];
+    }
+    return changes;
+  }
+
+  function populateFromComponents(components) {
+    for (const comp of components) {
+      if (!comp.fields) continue;
+      for (const field of comp.fields) {
+        const key = field[0];
+        const type = field[1];
+        const opts = field[3] || {};
+        const name = comp.id + '.' + key;
+        const el = configForm.querySelector('[name="' + name + '"]');
+        if (!el) continue;
+        if (type === 'checkbox' || type === 'switch') {
+          el.checked = !!opts.default;
+        } else if (type === 'radio') {
+          const radios = configForm.querySelectorAll('[name="' + name + '"]');
+          for (const radio of radios) {
+            radio.checked = opts.default !== undefined && String(radio.value) === String(opts.default);
+          }
+        } else {
+          el.value = opts.default !== undefined ? opts.default : '';
+        }
+      }
+    }
+  }
+
+  async function refreshComponents() {
+    const results = await Promise.allSettled(
+      components.map(async (comp) => {
+        const res = await fetch('/' + comp.file);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        comp.fields = await res.json();
+      })
+    );
+    if (results.some(r => r.status === 'rejected')) {
+      showError('Failed to refresh component values');
+    }
+  }
+
+  function updateUI() {
+    const changes = getPending();
+    const count = Object.keys(changes).length;
+    const pending = count > 0;
+    btnSaveApply.disabled = !pending;
+    btnApply.disabled = !pending;
+    btnReset.disabled = !pending;
+    footer.classList.toggle('pending', pending);
+    pendingCount.textContent = pending ? count + ' pending' : '';
+  }
+
   // Bootstrap on DOM ready
   document.addEventListener('DOMContentLoaded', init);
+
+  async function postJSON(url, data) {
+    clearError();
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const result = await res.json();
+      if (result.error) throw new Error(result.error);
+      return true;
+    } catch (err) {
+      showError('Request failed: ' + err.message);
+      return false;
+    }
+  }
+
+  function syncThen(doPopulate) {
+    refreshComponents().then(function () {
+      if (doPopulate) populateFromComponents(components);
+      setBaseline();
+      updateUI();
+      clearError();
+    });
+  }
+
+  function handleSaveApply() {
+    const data = getPending();
+    if (Object.keys(data).length === 0) return;
+    postJSON('/api/save', data).then(function (ok) {
+      if (ok) syncThen(true);
+    });
+  }
+
+  function handleApply() {
+    const data = getPending();
+    if (Object.keys(data).length === 0) return;
+    postJSON('/api/apply', data).then(function (ok) {
+      if (ok) syncThen(false);
+    });
+  }
+
+  function handleReset() {
+    clearError();
+    syncThen(true);
+  }
 
   function renderForm() {
     for (const comp of components) {
@@ -38,7 +171,7 @@
 
       if (comp.fields) {
         for (const field of comp.fields) {
-          const fieldEl = createField(field);
+          const fieldEl = createField(comp.id, field);
           if (fieldEl) details.appendChild(fieldEl);
         }
       }
@@ -58,13 +191,29 @@
     openHash();
   }
 
+  function bindChangeListeners() {
+    configForm.addEventListener('input', updateUI);
+    configForm.addEventListener('change', updateUI);
+  }
+
+  function wireButtons() {
+    btnSaveApply.addEventListener('click', handleSaveApply);
+    btnApply.addEventListener('click', handleApply);
+    btnReset.addEventListener('click', handleReset);
+  }
+
   async function init() {
-    if (!configForm || !navList || !statusBar) return;
+    if (!configForm || !navList || !statusBar || !footer || !btnSaveApply || !btnApply || !btnReset) return;
     const ok = await loadManifest();
     if (!ok) return;
     await loadComponents();
     renderNav();
     renderForm();
+    populateFromComponents(components);
+    setBaseline();
+    bindChangeListeners();
+    wireButtons();
+    updateUI();
     handleHash();
   }
 
@@ -90,6 +239,13 @@
       li.appendChild(a);
       navList.appendChild(li);
     }
+    navList.addEventListener('click', function (e) {
+      const link = e.target.closest('a');
+      if (link && link.hash) {
+        const el = document.getElementById(link.hash.slice(1));
+        if (el && el.tagName === 'DETAILS') el.open = true;
+      }
+    });
   }
 
   async function loadComponents() {
@@ -113,7 +269,7 @@
     }
   }
 
-  function createField(field) {
+  function createField(namePrefix, field) {
     // field = [key, type, label, opts?]
     if (!Array.isArray(field) || field.length < 3) return null;
 
@@ -129,7 +285,7 @@
       const label = document.createElement('label');
       const input = document.createElement('input');
       input.type = 'checkbox';
-      input.name = key;
+      input.name = namePrefix + '.' + key;
       if (opts.default) input.checked = true;
       applyAttrs(input, opts.attrs);
       label.appendChild(input);
@@ -143,7 +299,7 @@
       const input = document.createElement('input');
       input.type = 'checkbox';
       input.role = 'switch';
-      input.name = key;
+      input.name = namePrefix + '.' + key;
       if (opts.default) input.checked = true;
       applyAttrs(input, opts.attrs);
       label.appendChild(input);
@@ -164,7 +320,7 @@
           const radioLabel = document.createElement('label');
           const radio = document.createElement('input');
           radio.type = 'radio';
-          radio.name = key;
+          radio.name = namePrefix + '.' + key;
           radio.value = opt[0];
           if (opts.default !== undefined && String(opt[0]) === String(opts.default)) {
             radio.checked = true;
@@ -186,13 +342,13 @@
     if (inputTypes.indexOf(type) !== -1) {
       input = document.createElement('input');
       input.type = type;
-      input.name = key;
+      input.name = namePrefix + '.' + key;
       if (opts.default !== undefined) input.value = opts.default;
       applyAttrs(input, opts.attrs);
     } else if (type === 'range') {
       input = document.createElement('input');
       input.type = 'range';
-      input.name = key;
+      input.name = namePrefix + '.' + key;
       if (opts.default !== undefined) input.value = opts.default;
       applyAttrs(input, opts.attrs);
 
@@ -205,7 +361,7 @@
       labelEl._rangeOutput = valueDisplay;
     } else if (type === 'select') {
       input = document.createElement('select');
-      input.name = key;
+      input.name = namePrefix + '.' + key;
       if (opts.options) {
         for (const opt of opts.options) {
           const option = document.createElement('option');
@@ -220,7 +376,7 @@
       applyAttrs(input, opts.attrs);
     } else if (type === 'textarea') {
       input = document.createElement('textarea');
-      input.name = key;
+      input.name = namePrefix + '.' + key;
       if (opts.default !== undefined) input.value = opts.default;
       applyAttrs(input, opts.attrs);
     } else {

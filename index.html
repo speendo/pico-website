@@ -5,6 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ESP32 Config</title>
     <link rel="stylesheet" href="pico.jade.min.css">
+    <style>
+      footer {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+      }
+      #status-bar {
+        margin: 0;
+      }
+      footer.pending {
+        position: sticky;
+        bottom: 0;
+        z-index: 10;
+        background: var(--pico-background-color);
+        box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+      }
+    </style>
 </head>
 <body>
     <header class="container-fluid">
@@ -26,6 +45,12 @@
 
     <footer>
         <p id="status-bar"></p>
+        <small id="pending-count"></small>
+        <div role="group">
+            <button id="btn-save-apply" class="contrast" disabled>Save &amp; Apply</button>
+            <button id="btn-apply" class="primary" disabled>Apply</button>
+            <button id="btn-reset" class="secondary" disabled>Reset</button>
+        </div>
     </footer>
 
     <script src="app.min.js"></script>
