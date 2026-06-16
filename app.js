@@ -104,7 +104,7 @@
     const pending = count > 0;
     const ok = pending && configForm.checkValidity();
     btnSaveApply.disabled = btnApply.disabled = btnReset.disabled = !ok;
-    footer.classList.toggle('pending', pending);
+    footer.classList.toggle('pending', ok);
     pendingCount.textContent = pending ? count + ' pending' : '';
   }
 
@@ -193,6 +193,9 @@
   function bindChangeListeners() {
     configForm.addEventListener('input', updateUI);
     configForm.addEventListener('change', updateUI);
+    configForm.addEventListener('focusout', function (e) {
+      if (e.target.reportValidity) e.target.reportValidity();
+    });
   }
 
   function wireButtons() {
@@ -276,6 +279,7 @@
     const type = field[1];
     const labelText = field[2];
     const opts = field[3] || {};
+    const required = opts.attrs && opts.attrs.required;
 
     // HTML input types that map directly to <input type="...">
     const inputTypes = ['text', 'email', 'number', 'password', 'tel', 'url', 'color'];
@@ -287,9 +291,8 @@
       input.name = namePrefix + '.' + key;
       if (opts.default) input.checked = true;
       applyAttrs(input, opts.attrs);
-      input.onblur=input.reportValidity;
       label.appendChild(input);
-      label.appendChild(document.createTextNode(' ' + labelText));
+      label.appendChild(document.createTextNode(' ' + labelText + (required ? '*' : '')));
       if (opts.tooltip) label.setAttribute('data-tooltip', opts.tooltip);
       return label;
     }
@@ -302,9 +305,8 @@
       input.name = namePrefix + '.' + key;
       if (opts.default) input.checked = true;
       applyAttrs(input, opts.attrs);
-      input.onblur=input.reportValidity;
       label.appendChild(input);
-      label.appendChild(document.createTextNode(' ' + labelText));
+      label.appendChild(document.createTextNode(' ' + labelText + (required ? '*' : '')));
       if (opts.tooltip) label.setAttribute('data-tooltip', opts.tooltip);
       return label;
     }
@@ -312,7 +314,7 @@
     if (type === 'radio') {
       const fieldset = document.createElement('fieldset');
       const legend = document.createElement('legend');
-      legend.textContent = labelText;
+      legend.textContent = labelText + (required ? '*' : '');
       if (opts.tooltip) legend.setAttribute('data-tooltip', opts.tooltip);
       fieldset.appendChild(legend);
 
@@ -326,7 +328,6 @@
           if (opts.default !== undefined && String(opt[0]) === String(opts.default)) {
             radio.checked = true;
           }
-          radio.onblur=radio.reportValidity;
           radioLabel.appendChild(radio);
           radioLabel.appendChild(document.createTextNode(' ' + opt[1]));
           fieldset.appendChild(radioLabel);
@@ -336,7 +337,7 @@
     }
 
     const labelEl = document.createElement('label');
-    labelEl.textContent = labelText;
+    labelEl.textContent = labelText + (required ? '*' : '');
     if (opts.tooltip) labelEl.setAttribute('data-tooltip', opts.tooltip);
 
     let input;
@@ -385,7 +386,6 @@
       return null;
     }
 
-    input.onblur=input.reportValidity;
     labelEl.appendChild(input);
     if (labelEl._rangeOutput) {
       labelEl.appendChild(labelEl._rangeOutput);
