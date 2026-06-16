@@ -287,6 +287,7 @@
       input.name = namePrefix + '.' + key;
       if (opts.default) input.checked = true;
       applyAttrs(input, opts.attrs);
+      input.onblur=input.reportValidity;
       label.appendChild(input);
       label.appendChild(document.createTextNode(' ' + labelText));
       if (opts.tooltip) label.setAttribute('data-tooltip', opts.tooltip);
@@ -301,6 +302,7 @@
       input.name = namePrefix + '.' + key;
       if (opts.default) input.checked = true;
       applyAttrs(input, opts.attrs);
+      input.onblur=input.reportValidity;
       label.appendChild(input);
       label.appendChild(document.createTextNode(' ' + labelText));
       if (opts.tooltip) label.setAttribute('data-tooltip', opts.tooltip);
@@ -324,6 +326,7 @@
           if (opts.default !== undefined && String(opt[0]) === String(opts.default)) {
             radio.checked = true;
           }
+          radio.onblur=radio.reportValidity;
           radioLabel.appendChild(radio);
           radioLabel.appendChild(document.createTextNode(' ' + opt[1]));
           fieldset.appendChild(radioLabel);
@@ -382,6 +385,7 @@
       return null;
     }
 
+    input.onblur=input.reportValidity;
     labelEl.appendChild(input);
     if (labelEl._rangeOutput) {
       labelEl.appendChild(labelEl._rangeOutput);
