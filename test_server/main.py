@@ -1,0 +1,52 @@
+import json
+from pathlib import Path
+from fastapi import FastAPI, Request
+from fastapi.responses import FileResponse, PlainTextResponse
+
+app = FastAPI()
+
+BASE = Path(__file__).resolve().parent.parent
+
+nvs_store: dict[str, str | int | bool] = {}
+applied_store: dict[str, str | int | bool] = {}
+
+
+@app.on_event("startup")
+async def startup():
+    manifest_path = BASE / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    for comp in manifest:
+        fields_path = BASE / comp["file"]
+        fields = json.loads(fields_path.read_text())
+        for f in fields:
+            key = f"{comp['id']}.{f[0]}"
+            opts = f[3] if len(f) > 3 else {}
+            default = opts.get("default", "")
+            nvs_store[key] = default
+            applied_store[key] = default
+
+
+@app.get("/")
+async def get_root():
+    return FileResponse(str(BASE / "index.html"))
+
+
+@app.get("/manifest.json")
+async def get_manifest():
+    return FileResponse(str(BASE / "manifest.json"))
+
+
+@app.get("/components/{name}")
+async def get_component(name: str):
+    p = BASE / "components" / name
+    if p.is_file() and p.suffix in (".json",):
+        return FileResponse(str(p))
+    return PlainTextResponse("Not Found", status_code=404)
+
+
+@app.get("/{name:path}")
+async def get_static(name: str):
+    p = BASE / name
+    if p.is_file():
+        return FileResponse(str(p))
+    return PlainTextResponse("Not Found", status_code=404)
