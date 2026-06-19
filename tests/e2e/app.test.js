@@ -227,3 +227,113 @@ test.describe('Button actions', () => {
     await expect(page.locator('[name="wifi.ssid"]')).toHaveValue('')
   })
 })
+
+test.describe('Navigation and hash', () => {
+  test('nav click opens accordion', async ({ page }) => {
+    await page.goto('/')
+    await page.locator('#nav-list a[href="#gpio"]').click()
+    await expect(page.locator('details#gpio')).toHaveAttribute('open', '')
+  })
+
+  test('url hash opens section', async ({ page }) => {
+    await page.goto('/#gpio')
+    await page.waitForSelector('details#gpio')
+    await expect(page.locator('details#gpio')).toHaveAttribute('open', '')
+  })
+})
+
+test.describe('Error states', () => {
+  test('manifest failure shows error', async ({ page }) => {
+    await page.route('**/manifest.json', route => route.fulfill({ status: 404 }))
+    await page.goto('/')
+    await page.waitForSelector('#status-bar')
+    await expect(page.locator('#status-bar')).toContainText('Failed to load manifest')
+  })
+
+  test('manifest failure renders no form', async ({ page }) => {
+    await page.route('**/manifest.json', route => route.fulfill({ status: 404 }))
+    await page.goto('/')
+    await expect(page.locator('details')).toHaveCount(0)
+  })
+
+  test('component load failure shows warning', async ({ page }) => {
+    await page.route('**/components/gpio.json', route => route.fulfill({ status: 404 }))
+    await page.goto('/')
+    await expect(page.locator('#status-bar')).toContainText('Skipped')
+  })
+
+  test('component load failure renders partial form', async ({ page }) => {
+    await page.route('**/components/gpio.json', route => route.fulfill({ status: 404 }))
+    await page.goto('/')
+    await expect(page.locator('details#wifi')).toHaveCount(1)
+    await expect(page.locator('details#gpio')).toHaveCount(0)
+  })
+
+  test('post error shows in status bar', async ({ page }) => {
+    await page.goto('/')
+    await page.locator('details#wifi summary').click()
+    await page.locator('[name="wifi.ssid"]').fill('Test')
+    await page.route('**/api/apply', route => route.fulfill({ status: 400, body: 'Invalid' }))
+    await page.locator('#btn-apply').click()
+    await page.waitForTimeout(500)
+    await expect(page.locator('#status-bar')).toContainText('Request failed')
+  })
+
+  test('subsequent success clears error', async ({ page }) => {
+    await page.goto('/')
+    await page.locator('details#wifi summary').click()
+    await page.locator('[name="wifi.ssid"]').fill('Test')
+    await page.route('**/api/apply', route => route.fulfill({ status: 400, body: 'Invalid' }))
+    await page.locator('#btn-apply').click()
+    await page.waitForTimeout(500)
+    await expect(page.locator('#status-bar')).toContainText('Request failed')
+    await page.unroute('**/api/apply')
+    await page.locator('[name="wifi.ssid"]').fill('Test2')
+    await page.locator('#btn-apply').click()
+    await page.waitForTimeout(500)
+    await expect(page.locator('#status-bar')).toHaveText('')
+  })
+})
+
+test.describe('Edge cases', () => {
+  test('invalid number does not enable buttons', async ({ page }) => {
+    await page.goto('/')
+    await page.locator('details#gpio summary').click()
+    const pin = page.locator('[name="gpio.pin"]')
+    await pin.fill('999')
+    await expect(page.locator('#btn-apply')).toBeDisabled()
+  })
+
+  test('range output displays live value', async ({ page }) => {
+    await page.goto('/')
+    await page.locator('details#wifi summary').click()
+    const channel = page.locator('[name="wifi.channel"]')
+    const output = page.locator('output')
+    await expect(output).toHaveText('6')
+    await channel.fill('11')
+    await expect(output).toHaveText('11')
+  })
+
+  test('multiple fields then apply', async ({ page }) => {
+    await page.goto('/')
+    await page.locator('details#wifi summary').click()
+    await page.locator('details#gpio summary').click()
+    await page.locator('[name="wifi.ssid"]').fill('Net')
+    await page.locator('[name="wifi.channel"]').fill('11')
+    await page.locator('[name="gpio.pin"]').fill('5')
+    await expect(page.locator('#pending-count')).toHaveText('3 pending change(s)')
+    await page.locator('#btn-apply').click()
+    await page.waitForTimeout(500)
+    await expect(page.locator('#pending-count')).toHaveText('')
+  })
+
+  test('form has expected field count', async ({ page }) => {
+    await page.goto('/')
+    await page.locator('details#wifi summary').click()
+    await page.locator('details#gpio summary').click()
+    const wifiFields = page.locator('details#wifi > label, details#wifi > fieldset')
+    const gpioFields = page.locator('details#gpio > label, details#gpio > fieldset')
+    await expect(wifiFields).toHaveCount(5)
+    await expect(gpioFields).toHaveCount(4)
+  })
+})
