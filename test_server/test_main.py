@@ -51,3 +51,20 @@ def test_save_returns_ok_json():
     response = client.post("/api/save", json={"wifi.ssid": "MyNetwork"})
     data = response.json()
     assert data == {"ok": True}
+
+
+def test_apply_updates_applied_only():
+    client.post("/api/save", json={"gpio.pin": 5})
+    response = client.post("/api/apply", json={"gpio.pin": 10})
+    assert response.status_code == 200
+    assert response.json() == {"ok": True}
+
+
+def test_apply_rejects_invalid_json():
+    response = client.post("/api/apply", content=b"bad", headers={"Content-Type": "application/json"})
+    assert response.status_code == 400
+
+
+def test_apply_returns_ok_json():
+    response = client.post("/api/apply", json={"wifi.ssid": "TempNet"})
+    assert response.json() == {"ok": True}
