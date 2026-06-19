@@ -210,7 +210,7 @@ describe('createField', () => {
       key: 'ssid', type: 'text', label: 'SSID',
       opts: { tooltip: 'Network name' },
     })
-    expect(field.getAttribute('data-tooltip')).toBe('Network name')
+    expect(field.getAttribute('title')).toBe('Network name')
   })
 
   it('returns null for invalid field spec', () => {
