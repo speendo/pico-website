@@ -11,6 +11,10 @@
   var baseline = null;
   var components = [];
   var dirty = false;
+  var ws = null;
+  var lastSent = {};
+  var inFlight = {};
+  var wsReconnectTimer = null;
 
   function showError(msg) {
     statusBar.textContent = msg;
@@ -54,6 +58,7 @@
   }
 
   function populateFromComponents(comps) {
+    if (!comps) comps = components;
     for (var ci = 0; ci < comps.length; ci++) {
       var comp = comps[ci];
       if (!comp.fields) continue;
@@ -157,13 +162,119 @@
     }
   }
 
-  function syncThen(doPopulate) {
-    refreshComponents().then(function () {
-      if (doPopulate) populateFromComponents(components);
-      setBaseline();
-      updateUI();
-      clearError();
-    });
+  function connectWS() {
+    configForm.setAttribute('aria-busy', 'true');
+    var proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    ws = new WebSocket(proto + '//' + location.host + '/api/settings/ws');
+    ws.onopen = function () {};
+    ws.onmessage = onWSMessage;
+    ws.onclose = onWSClose;
+    ws.onerror = function () { if (ws) ws.close(); };
+  }
+
+  function disconnectWS() {
+    if (wsReconnectTimer) { clearTimeout(wsReconnectTimer); wsReconnectTimer = null; }
+    if (ws) { ws.onclose = null; ws.close(); ws = null; }
+  }
+
+  function onWSClose() {
+    ws = null;
+    configForm.setAttribute('aria-busy', 'true');
+    showError('Connection lost. Retrying\u2026');
+    wsReconnectTimer = setTimeout(connectWS, 3000);
+  }
+
+  function processSettings(data, dirtyFlag) {
+    dirty = dirtyFlag === true;
+    var comps = [];
+    for (var key in data) {
+      if (key[0] === '_') continue;
+      var group = data[key];
+      var fields = [];
+      for (var fieldKey in group) {
+        var arr = group[fieldKey];
+        fields.push({key: fieldKey, type: arr[0], label: arr[1], opts: arr[2]});
+      }
+      comps.push({id: key, label: labelFromKey(key), fields: fields});
+    }
+    components = comps;
+    renderNav();
+    renderForm();
+    populateFromComponents();
+    setBaseline();
+    configForm.removeAttribute('aria-busy');
+    clearError();
+    updateUI();
+    handleHash();
+  }
+
+  function onWSMessage(event) {
+    var msg = JSON.parse(event.data);
+    if (msg.type === 'error') { showError(msg.message); return; }
+    if (msg.type !== 'settings') return;
+    var data = msg.data || msg;
+    var anyMatched = false;
+    for (var key in inFlight) {
+      if (!inFlight[key]) continue;
+      var parts = key.split('.');
+      var serverVal = resolveNested(data, parts);
+      if (serverVal !== undefined && String(serverVal) === String(lastSent[key])) {
+        inFlight[key] = false;
+        anyMatched = true;
+      }
+    }
+    if (anyMatched) {
+      updateAV(data);
+      applyAV();
+      return;
+    }
+    updateAV(data);
+    applyAV();
+    syncLS();
+  }
+
+  function updateAV(data) {
+    for (var ci = 0; ci < components.length; ci++) {
+      var comp = components[ci];
+      var sGroup = data[comp.id];
+      if (!sGroup) continue;
+      for (var fi = 0; fi < comp.fields.length; fi++) {
+        var field = comp.fields[fi];
+        var sField = sGroup[field.key];
+        if (!sField) continue;
+        field.opts.value = sField[2].value;
+      }
+    }
+  }
+
+  function applyAV() {
+    populateFromComponents();
+    setBaseline();
+    updateUI();
+  }
+
+  function syncLS() {
+    for (var ci = 0; ci < components.length; ci++) {
+      for (var fi = 0; fi < components[ci].fields.length; fi++) {
+        var key = components[ci].id + '.' + components[ci].fields[fi].key;
+        lastSent[key] = components[ci].fields[fi].opts.value;
+      }
+    }
+  }
+
+  function resolveNested(obj, parts) {
+    var cur = obj;
+    for (var i = 0; i < parts.length; i++) {
+      if (cur == null || typeof cur !== 'object') return undefined;
+      cur = cur[parts[i]];
+    }
+    return cur;
+  }
+
+  function syncThen() {
+    clearError();
+    setBaseline();
+    updateUI();
   }
 
   function handleSaveApply() {
@@ -173,13 +284,14 @@
     if (count === 0 && !dirty) return;
     var body = count > 0 ? buildPatch(changes) : buildPatch(serialize());
     postJSON('/api/settings/save', body).then(function (ok) {
-      if (ok) syncThen(true);
+      if (ok) syncThen();
     });
   }
 
   function handleReset() {
     clearError();
-    syncThen(true);
+    disconnectWS();
+    connectWS();
   }
 
   function labelFromKey(key) {
@@ -216,6 +328,7 @@
   }
 
   function renderNav() {
+    navList.innerHTML = '';
     for (var ci = 0; ci < components.length; ci++) {
       var comp = components[ci];
       var li = document.createElement('li');
@@ -225,6 +338,8 @@
       li.appendChild(a);
       navList.appendChild(li);
     }
+    if (navList._clickWired) return;
+    navList._clickWired = true;
     navList.addEventListener('click', function (e) {
       var link = e.target.closest('a');
       if (link && link.hash) {
@@ -235,6 +350,7 @@
   }
 
   function renderForm() {
+    configForm.innerHTML = '';
     for (var ci = 0; ci < components.length; ci++) {
       var comp = components[ci];
       var details = document.createElement('details');
@@ -275,16 +391,9 @@
 
   async function init() {
     if (!configForm || !navList || !statusBar || !footer || !btnSaveApply || !btnReset) return;
-    var ok = await loadSettings();
-    if (!ok) return;
-    renderNav();
-    renderForm();
-    populateFromComponents(components);
-    setBaseline();
     bindChangeListeners();
     wireButtons();
-    updateUI();
-    handleHash();
+    connectWS();
   }
 
   function createField(namePrefix, field) {
@@ -412,5 +521,5 @@
       }
     }
   }
-  /* test-expose */if(window.__TEST_MODE){window.serialize=serialize;window.setBaseline=setBaseline;window.getPending=getPending;window.createField=createField;window.populateFromComponents=populateFromComponents;window.applyAttrs=applyAttrs;window.updateUI=updateUI;window.showError=showError;window.clearError=clearError;window.postJSON=postJSON;window.loadSettings=loadSettings;window.refreshComponents=refreshComponents;window.syncThen=syncThen;window.handleSaveApply=handleSaveApply;window.handleReset=handleReset;window.renderNav=renderNav;window.renderForm=renderForm;window.handleHash=handleHash;window.wireButtons=wireButtons;window.bindChangeListeners=bindChangeListeners;window.init=init;window.buildPatch=buildPatch;window.__test={};Object.defineProperty(window.__test,'components',{get:function(){return components},set:function(v){components=v}});Object.defineProperty(window.__test,'dirty',{get:function(){return dirty},set:function(v){dirty=v}});}
+  /* test-expose */if(window.__TEST_MODE){window.serialize=serialize;window.setBaseline=setBaseline;window.getPending=getPending;window.createField=createField;window.populateFromComponents=populateFromComponents;window.applyAttrs=applyAttrs;window.updateUI=updateUI;window.showError=showError;window.clearError=clearError;window.postJSON=postJSON;window.loadSettings=loadSettings;window.refreshComponents=refreshComponents;window.syncThen=syncThen;window.handleSaveApply=handleSaveApply;window.handleReset=handleReset;window.renderNav=renderNav;window.renderForm=renderForm;window.handleHash=handleHash;window.wireButtons=wireButtons;window.bindChangeListeners=bindChangeListeners;window.init=init;window.buildPatch=buildPatch;window.connectWS=connectWS;window.disconnectWS=disconnectWS;window.processSettings=processSettings;window.onWSMessage=onWSMessage;window.updateAV=updateAV;window.applyAV=applyAV;window.syncLS=syncLS;window.resolveNested=resolveNested;window.__test={};window.__test.receiveWSMessage=onWSMessage;Object.defineProperty(window.__test,'components',{get:function(){return components},set:function(v){components=v}});Object.defineProperty(window.__test,'dirty',{get:function(){return dirty},set:function(v){dirty=v}});}
 })();

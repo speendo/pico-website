@@ -545,19 +545,57 @@ describe('syncThen', () => {
     }
   })
 
-  it('with true repopulates, resets baseline, clears error', async () => {
-    window.syncThen(true)
-    await new Promise(function (r) { return setTimeout(r, 0) })
-    expect(document.querySelector('[name="wifi.ssid"]').value).toBe('new')
+  it('clears error, resets baseline, updates UI', () => {
+    window.syncThen()
     expect(window.getPending()).toEqual({})
     expect(document.getElementById('status-bar').textContent).toBe('')
   })
+})
 
-  it('with false does not repopulate but resets baseline', async () => {
-    window.syncThen(false)
-    await new Promise(function (r) { return setTimeout(r, 0) })
-    expect(document.querySelector('[name="wifi.ssid"]').value).toBe('old')
-    expect(window.getPending()).toEqual({})
+describe('connectWS', () => {
+  it('sets aria-busy on form', () => {
+    window.connectWS()
+    expect(document.getElementById('config-form').getAttribute('aria-busy')).toBe('true')
+  })
+})
+
+describe('processSettings', () => {
+  beforeEach(() => {
+    document.querySelector('#config-form').innerHTML = ''
+    document.getElementById('nav-list').innerHTML = ''
+    window.__test.components = []
+  })
+
+  it('builds components from settings data', () => {
+    var data = {
+      wifi: { ssid: ['text', 'SSID', { value: 'MyNet' }] },
+      gpio: { pin: ['number', 'Pin', { value: 5 }] },
+    }
+    window.processSettings(data, false)
+    expect(window.__test.components.length).toBe(2)
+    expect(window.__test.components[0].id).toBe('wifi')
+    expect(window.__test.components[1].id).toBe('gpio')
+  })
+
+  it('captures dirty flag', () => {
+    window.processSettings({ wifi: { ssid: ['text', 'SSID', { value: '' }] } }, true)
+    expect(window.__test.dirty).toBe(true)
+  })
+
+  it('captures dirty as false', () => {
+    window.processSettings({ wifi: { ssid: ['text', 'SSID', { value: '' }] } }, false)
+    expect(window.__test.dirty).toBe(false)
+  })
+
+  it('removes aria-busy after rendering', () => {
+    window.processSettings({ wifi: { ssid: ['text', 'SSID', { value: '' }] } }, false)
+    expect(document.getElementById('config-form').getAttribute('aria-busy')).toBe('false')
+  })
+
+  it('clears error on successful load', () => {
+    document.getElementById('status-bar').textContent = 'Previous error'
+    window.processSettings({ wifi: { ssid: ['text', 'SSID', { value: '' }] } }, false)
+    expect(document.getElementById('status-bar').textContent).toBe('')
   })
 })
 
