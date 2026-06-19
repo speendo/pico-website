@@ -105,7 +105,7 @@
     const ok = pending && configForm.checkValidity();
     btnSaveApply.disabled = btnApply.disabled = btnReset.disabled = !ok;
     footer.classList.toggle('pending', ok);
-    pendingCount.textContent = pending ? count + ' pending' : '';
+    pendingCount.textContent = pending ? count + ' pending change(s)' : '';
   }
 
   // Bootstrap on DOM ready
