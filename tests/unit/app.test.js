@@ -854,3 +854,24 @@ describe('onWSMessage — all 10 state machine cases', () => {
     expect(window.__test.inFlight['wifi.ssid']).toBe(true)
   })
 })
+
+describe('WS reconnect', () => {
+  beforeEach(() => {
+    document.getElementById('status-bar').textContent = ''
+    var existing = document.getElementById('btn-ws-retry')
+    if (existing) existing.remove()
+  })
+
+  it('shows retry button after 5 failed attempts', () => {
+    for (var i = 0; i < 5; i++) {
+      window.onWSClose()
+    }
+    expect(document.getElementById('status-bar').textContent).toContain('Cannot connect')
+    expect(document.getElementById('btn-ws-retry').hidden).toBe(false)
+  })
+
+  it('sets aria-busy on close', () => {
+    window.onWSClose()
+    expect(document.getElementById('config-form').getAttribute('aria-busy')).toBe('true')
+  })
+})

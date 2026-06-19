@@ -15,6 +15,7 @@
   var lastSent = {};
   var inFlight = {};
   var wsReconnectTimer = null;
+  var wsRetries = 0;
 
   function showError(msg) {
     statusBar.textContent = msg;
@@ -180,8 +181,30 @@
   function onWSClose() {
     ws = null;
     configForm.setAttribute('aria-busy', 'true');
-    showError('Connection lost. Retrying\u2026');
-    wsReconnectTimer = setTimeout(connectWS, 3000);
+    wsRetries++;
+    if (wsRetries >= 5) {
+      showError('Cannot connect to device');
+      var retryBtn = document.getElementById('btn-ws-retry') || createRetryButton();
+      retryBtn.hidden = false;
+      return;
+    }
+    var delay = Math.min(1000 * Math.pow(2, wsRetries), 15000);
+    showError('Connection lost. Retrying in ' + (delay / 1000) + 's\u2026');
+    wsReconnectTimer = setTimeout(connectWS, delay);
+  }
+
+  function createRetryButton() {
+    var btn = document.createElement('button');
+    btn.id = 'btn-ws-retry';
+    btn.className = 'secondary';
+    btn.textContent = 'Retry';
+    btn.addEventListener('click', function () {
+      btn.hidden = true;
+      wsRetries = 0;
+      connectWS();
+    });
+    document.getElementById('status-bar').after(btn);
+    return btn;
   }
 
   function processSettings(data, dirtyFlag) {
@@ -212,6 +235,7 @@
     var msg = JSON.parse(event.data);
     if (msg.type === 'error') { showError(msg.message); return; }
     if (msg.type !== 'settings' && msg._dirty === undefined) return;
+    wsRetries = 0;
 
     var dirtyFlag = msg._dirty;
     var data = msg.data || msg;
