@@ -101,3 +101,39 @@ def test_dirty_false_after_reset():
     client.get("/api/settings/reset")
     data = client.get("/api/settings").json()
     assert data["_dirty"] is False
+
+
+def test_ws_connect_receives_settings():
+    with client.websocket_connect("/api/settings/ws") as ws:
+        data = ws.receive_json()
+        assert "_dirty" in data
+        assert "wifi" in data
+        assert "gpio" in data
+
+
+def test_ws_apply_updates_applied():
+    with client.websocket_connect("/api/settings/ws") as ws:
+        ws.receive_json()  # initial push
+        ws.send_json({"action": "apply", "data": {"wifi": {"ssid": ["text", "SSID", {"value": "WSTest"}]}}})
+        pushed = ws.receive_json()
+        assert pushed["wifi"]["ssid"][2]["value"] == "WSTest"
+
+
+def test_ws_apply_makes_dirty():
+    with client.websocket_connect("/api/settings/ws") as ws:
+        ws.receive_json()  # initial push
+        ws.send_json({"action": "apply", "data": {"wifi": {"ssid": ["text", "SSID", {"value": "DirtyMaker"}]}}})
+        pushed = ws.receive_json()
+        assert pushed["_dirty"] is True
+
+
+def test_external_change_broadcasts_to_all_clients():
+    with client.websocket_connect("/api/settings/ws") as ws1, \
+         client.websocket_connect("/api/settings/ws") as ws2:
+        ws1.receive_json()
+        ws2.receive_json()
+        client.post("/api/settings/external-change", json={"wifi": {"ssid": ["text", "SSID", {"value": "ExtChange"}]}})
+        data1 = ws1.receive_json()
+        data2 = ws2.receive_json()
+        assert data1["wifi"]["ssid"][2]["value"] == "ExtChange"
+        assert data2["wifi"]["ssid"][2]["value"] == "ExtChange"
