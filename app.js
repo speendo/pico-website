@@ -211,26 +211,96 @@
   function onWSMessage(event) {
     var msg = JSON.parse(event.data);
     if (msg.type === 'error') { showError(msg.message); return; }
-    if (msg.type !== 'settings') return;
+    if (msg.type !== 'settings' && msg._dirty === undefined) return;
+
+    var dirtyFlag = msg._dirty;
     var data = msg.data || msg;
-    var anyMatched = false;
+
+    // ── Echo resolution ──
+    var echoMatched = false;
     for (var key in inFlight) {
       if (!inFlight[key]) continue;
       var parts = key.split('.');
       var serverVal = resolveNested(data, parts);
+      if (serverVal !== undefined && serverVal instanceof Array && serverVal.length >= 3) {
+        serverVal = serverVal[2] && serverVal[2].value;
+      }
       if (serverVal !== undefined && String(serverVal) === String(lastSent[key])) {
         inFlight[key] = false;
-        anyMatched = true;
+        echoMatched = true;
       }
     }
-    if (anyMatched) {
+
+    if (echoMatched) {
+      var queuedKeys = [];
+      for (var key in inFlight) {
+        if (inFlight[key]) continue;
+        var parts = key.split('.');
+        var fv = readFormValue(parts);
+        if (fv !== undefined && String(fv) !== String(lastSent[key])) {
+          queuedKeys.push({key: key, value: fv});
+        }
+      }
+      if (queuedKeys.length > 0) {
+        for (var qi = 0; qi < queuedKeys.length; qi++) {
+          sendToServer(queuedKeys[qi].key, queuedKeys[qi].value);
+        }
+        updateAV(data);
+        applyAV();
+        return;
+      }
       updateAV(data);
       applyAV();
       return;
     }
+
+    var hasInFlight = false;
+    for (var k in inFlight) { if (inFlight[k]) { hasInFlight = true; break; } }
+    if (hasInFlight) return;
+
+    var changedFields = {};
+    for (var ci = 0; ci < components.length; ci++) {
+      var comp = components[ci];
+      var sGroup = data[comp.id];
+      if (!sGroup) continue;
+      for (var fi = 0; fi < comp.fields.length; fi++) {
+        var field = comp.fields[fi];
+        var sField = sGroup[field.key];
+        if (!sField) continue;
+        var newAV = sField[2].value;
+        var oldAV = field.opts.value;
+        if (String(newAV) === String(oldAV)) continue;
+        var el = document.querySelector('[name="' + comp.id + '.' + field.key + '"]');
+        if (!el) continue;
+        var fv = (el.type === 'checkbox') ? el.checked :
+                 (el.type === 'number' || el.type === 'range') ? parseFloat(el.value) : el.value;
+        changedFields[comp.id + '.' + field.key] = {newAV: newAV, oldAV: oldAV, fv: fv, label: field.label};
+      }
+    }
+
+    if (Object.keys(changedFields).length === 0) return;
+
     updateAV(data);
-    applyAV();
-    syncLS();
+
+    var conflicts = [];
+    var externalFields = [];
+    for (var key in changedFields) {
+      var cf = changedFields[key];
+      if (String(cf.fv) === String(cf.oldAV)) {
+        externalFields.push({key: key, label: cf.label, newValue: cf.newAV});
+      } else if (String(cf.fv) !== String(cf.newAV)) {
+        conflicts.push({key: key, label: cf.label, localValue: cf.fv, serverValue: cf.newAV});
+      }
+    }
+
+    if (conflicts.length > 0) {
+      showConflictPrompt(conflicts);
+    } else if (externalFields.length > 0) {
+      showExternalNotification(externalFields);
+    } else {
+      applyAV();
+      syncLS();
+    }
   }
 
   function updateAV(data) {
@@ -291,6 +361,42 @@
       cur = cur[parts[i]];
     }
     return cur;
+  }
+
+  function readFormValue(parts) {
+    var el = document.querySelector('[name="' + parts.join('.') + '"]');
+    if (!el) return undefined;
+    if (el.type === 'checkbox') return el.checked;
+    if (el.type === 'number' || el.type === 'range') return parseFloat(el.value);
+    return el.value;
+  }
+
+  function showExternalNotification(fields) {
+    var bar = document.getElementById('server-changed');
+    var text = document.getElementById('notif-text');
+    text.textContent = 'Server settings changed: ' + fields.map(function (f) { return f.label; }).join(', ');
+    document.getElementById('notif-load').hidden = false;
+    document.getElementById('notif-keep').hidden = false;
+    document.getElementById('notif-keep-local').hidden = true;
+    document.getElementById('notif-accept-server').hidden = true;
+    bar.hidden = false;
+  }
+
+  function showConflictPrompt(conflicts) {
+    var bar = document.getElementById('server-changed');
+    var text = document.getElementById('notif-text');
+    text.textContent = 'Conflict: ' + conflicts.map(function (f) { return f.label; }).join(', ');
+    document.getElementById('notif-load').hidden = true;
+    document.getElementById('notif-keep').hidden = true;
+    document.getElementById('notif-keep-local').hidden = false;
+    document.getElementById('notif-accept-server').hidden = false;
+    bar.hidden = false;
+    footer.classList.add('pending');
+  }
+
+  function hideNotification() {
+    document.getElementById('server-changed').hidden = true;
+    footer.classList.remove('pending');
   }
 
   function syncThen() {
@@ -427,6 +533,40 @@
   function wireButtons() {
     btnSaveApply.addEventListener('click', handleSaveApply);
     btnReset.addEventListener('click', handleReset);
+    document.getElementById('notif-load').addEventListener('click', function () {
+      hideNotification();
+      applyAV();
+      syncLS();
+    });
+    document.getElementById('notif-keep').addEventListener('click', function () {
+      hideNotification();
+      for (var ci = 0; ci < components.length; ci++) {
+        var comp = components[ci];
+        for (var fi = 0; fi < comp.fields.length; fi++) {
+          var field = comp.fields[fi];
+          var el = document.querySelector('[name="' + comp.id + '.' + field.key + '"]');
+          if (!el) continue;
+          var fv = (el.type === 'checkbox') ? el.checked :
+                   (el.type === 'number' || el.type === 'range') ? parseFloat(el.value) : el.value;
+          field.opts.value = fv;
+        }
+      }
+      syncLS();
+      setBaseline();
+      updateUI();
+    });
+    document.getElementById('notif-keep-local').addEventListener('click', function () {
+      hideNotification();
+      var changes = serialize();
+      for (var key in changes) {
+        sendToServer(key, changes[key]);
+      }
+    });
+    document.getElementById('notif-accept-server').addEventListener('click', function () {
+      hideNotification();
+      applyAV();
+      syncLS();
+    });
   }
 
   async function init() {
@@ -561,5 +701,5 @@
       }
     }
   }
-  /* test-expose */if(window.__TEST_MODE){window.serialize=serialize;window.setBaseline=setBaseline;window.getPending=getPending;window.createField=createField;window.populateFromComponents=populateFromComponents;window.applyAttrs=applyAttrs;window.updateUI=updateUI;window.showError=showError;window.clearError=clearError;window.postJSON=postJSON;window.loadSettings=loadSettings;window.refreshComponents=refreshComponents;window.syncThen=syncThen;window.handleSaveApply=handleSaveApply;window.handleReset=handleReset;window.renderNav=renderNav;window.renderForm=renderForm;window.handleHash=handleHash;window.wireButtons=wireButtons;window.bindChangeListeners=bindChangeListeners;window.init=init;window.buildPatch=buildPatch;window.connectWS=connectWS;window.disconnectWS=disconnectWS;window.processSettings=processSettings;window.onWSMessage=onWSMessage;window.updateAV=updateAV;window.applyAV=applyAV;window.syncLS=syncLS;window.resolveNested=resolveNested;window.sendToServer=sendToServer;window.onUserInput=onUserInput;window.__test={};window.__test.receiveWSMessage=onWSMessage;window.__test.wsReady=function(){if(ws)ws.readyState=1};Object.defineProperty(window.__test,'components',{get:function(){return components},set:function(v){components=v}});Object.defineProperty(window.__test,'dirty',{get:function(){return dirty},set:function(v){dirty=v}});Object.defineProperty(window.__test,'lastSent',{get:function(){return lastSent},set:function(v){lastSent=v}});Object.defineProperty(window.__test,'inFlight',{get:function(){return inFlight},set:function(v){inFlight=v}});}
+  /* test-expose */if(window.__TEST_MODE){window.serialize=serialize;window.setBaseline=setBaseline;window.getPending=getPending;window.createField=createField;window.populateFromComponents=populateFromComponents;window.applyAttrs=applyAttrs;window.updateUI=updateUI;window.showError=showError;window.clearError=clearError;window.postJSON=postJSON;window.loadSettings=loadSettings;window.refreshComponents=refreshComponents;window.syncThen=syncThen;window.handleSaveApply=handleSaveApply;window.handleReset=handleReset;window.renderNav=renderNav;window.renderForm=renderForm;window.handleHash=handleHash;window.wireButtons=wireButtons;window.bindChangeListeners=bindChangeListeners;window.init=init;window.buildPatch=buildPatch;window.connectWS=connectWS;window.disconnectWS=disconnectWS;window.processSettings=processSettings;window.onWSMessage=onWSMessage;window.updateAV=updateAV;window.applyAV=applyAV;window.syncLS=syncLS;window.resolveNested=resolveNested;window.sendToServer=sendToServer;window.onUserInput=onUserInput;window.readFormValue=readFormValue;window.showExternalNotification=showExternalNotification;window.showConflictPrompt=showConflictPrompt;window.hideNotification=hideNotification;window.__test={};window.__test.receiveWSMessage=onWSMessage;window.__test.wsReady=function(){if(ws)ws.readyState=1};Object.defineProperty(window.__test,'components',{get:function(){return components},set:function(v){components=v}});Object.defineProperty(window.__test,'dirty',{get:function(){return dirty},set:function(v){dirty=v}});Object.defineProperty(window.__test,'lastSent',{get:function(){return lastSent},set:function(v){lastSent=v}});Object.defineProperty(window.__test,'inFlight',{get:function(){return inFlight},set:function(v){inFlight=v}});}
 })();

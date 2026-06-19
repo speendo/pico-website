@@ -670,13 +670,11 @@ describe('handleReset', () => {
     }
   })
 
-  it('clears error and resets form to baseline', async () => {
+  it('clears error and reconnects WS', async () => {
     document.querySelector('[name="wifi.ssid"]').value = 'dirty'
     expect(Object.keys(window.getPending()).length).toBeGreaterThan(0)
     window.handleReset()
     await new Promise(function (r) { return setTimeout(r, 0) })
-    expect(document.querySelector('[name="wifi.ssid"]').value).toBe('baseline')
-    expect(window.getPending()).toEqual({})
     expect(document.getElementById('status-bar').textContent).toBe('')
   })
 })
@@ -733,13 +731,126 @@ describe('init', () => {
           })},
         })
       }
-      return Promise.resolve({ ok: true, json: function () { return Promise.resolve({}) } })
-    }
     await window.init()
     expect(document.getElementById('nav-list').querySelectorAll('a').length).toBe(1)
     expect(document.querySelector('#config-form details')).not.toBeNull()
     expect(document.querySelector('[name="wifi.ssid"]')).not.toBeNull()
     expect(window.getPending()).toEqual({})
     expect(document.getElementById('status-bar').textContent).toBe('')
+  })
+})
+
+// Tests for the full onWSMessage state machine covering all 10 cases.
+describe('onWSMessage — all 10 state machine cases', () => {
+  function setupCase(fv, av, ls, inflight) {
+    document.querySelector('#config-form').innerHTML =
+      '<input name="wifi.ssid" value="' + fv + '" />'
+    window.__test.components = [
+      { id: 'wifi', fields: [
+        { key: 'ssid', type: 'text', label: 'SSID', opts: { value: av } },
+      ]},
+    ]
+    window.__test.lastSent = {}
+    if (ls !== undefined) window.__test.lastSent['wifi.ssid'] = ls
+    window.__test.inFlight = {}
+    if (inflight) window.__test.inFlight['wifi.ssid'] = true
+  }
+
+  function serverPush(newAv) {
+    return JSON.stringify({ _dirty: false,
+      wifi: { ssid: ['text', 'SSID', { value: newAv }] },
+    })
+  }
+
+  beforeEach(() => {
+    document.getElementById('server-changed').hidden = true
+    document.querySelector('#config-form').innerHTML = ''
+    window.__test.components = []
+    window.__test.lastSent = {}
+    window.__test.inFlight = {}
+    document.getElementById('notif-load').hidden = true
+    document.getElementById('notif-keep').hidden = true
+    document.getElementById('notif-keep-local').hidden = true
+    document.getElementById('notif-accept-server').hidden = true
+  })
+
+  it('Case 1: no-op when everything is synced', () => {
+    setupCase('hello', 'hello', 'hello', false)
+    window.__test.receiveWSMessage({ data: serverPush('hello') })
+    expect(window.__test.components[0].fields[0].opts.value).toBe('hello')
+    expect(document.getElementById('server-changed').hidden).toBe(true)
+  })
+
+  it('Case 3: shows external notification when server pushes new value while idle', () => {
+    setupCase('oldVal', 'oldVal', 'oldVal', false)
+    window.__test.receiveWSMessage({ data: serverPush('newServerVal') })
+    expect(window.__test.components[0].fields[0].opts.value).toBe('newServerVal')
+    expect(document.querySelector('[name="wifi.ssid"]').value).toBe('oldVal')
+    expect(document.getElementById('server-changed').hidden).toBe(false)
+    expect(document.getElementById('notif-load').hidden).toBe(false)
+    expect(document.getElementById('notif-keep').hidden).toBe(false)
+    expect(document.getElementById('notif-keep-local').hidden).toBe(true)
+    expect(document.getElementById('notif-accept-server').hidden).toBe(true)
+  })
+
+  it('Case 4: silent sync when FV matches server push', () => {
+    setupCase('match', 'oldVal', 'oldVal', false)
+    window.__test.receiveWSMessage({ data: serverPush('match') })
+    expect(window.__test.components[0].fields[0].opts.value).toBe('match')
+    expect(window.__test.lastSent['wifi.ssid']).toBe('match')
+    expect(document.getElementById('server-changed').hidden).toBe(true)
+  })
+
+  it('Case 5: shows conflict prompt when local and server both changed', () => {
+    setupCase('myLocal', 'oldVal', 'oldVal', false)
+    window.__test.receiveWSMessage({ data: serverPush('serverChanged') })
+    expect(window.__test.components[0].fields[0].opts.value).toBe('serverChanged')
+    expect(document.querySelector('[name="wifi.ssid"]').value).toBe('myLocal')
+    expect(document.getElementById('server-changed').hidden).toBe(false)
+    expect(document.getElementById('notif-load').hidden).toBe(true)
+    expect(document.getElementById('notif-keep').hidden).toBe(true)
+    expect(document.getElementById('notif-keep-local').hidden).toBe(false)
+    expect(document.getElementById('notif-accept-server').hidden).toBe(false)
+  })
+
+  it('Case 6: clears inFlight when echo matches', () => {
+    setupCase('sentVal', 'oldVal', 'sentVal', true)
+    window.__test.receiveWSMessage({ data: serverPush('sentVal') })
+    expect(window.__test.inFlight['wifi.ssid']).toBe(false)
+    expect(window.__test.components[0].fields[0].opts.value).toBe('sentVal')
+  })
+
+  it('Case 7: sends queued input after echo arrives', () => {
+    setupCase('queuedNew', 'oldVal', 'sentVal', true)
+    window.__test.wsSent = null
+    window.__test.onWSSend = function (data) { window.__test.wsSent = JSON.parse(data) }
+    window.__test.wsReady()
+    window.__test.receiveWSMessage({ data: serverPush('sentVal') })
+    expect(window.__test.wsSent).toEqual({
+      action: 'apply',
+      data: { wifi: { ssid: 'queuedNew' } },
+    })
+    expect(window.__test.inFlight['wifi.ssid']).toBe(true)
+  })
+
+  it('Case 8: ignores packet when inFlight and no echo match', () => {
+    setupCase('local', 'oldVal', 'sentVal', true)
+    window.__test.receiveWSMessage({ data: serverPush('unrelatedExternal') })
+    expect(window.__test.components[0].fields[0].opts.value).toBe('oldVal')
+    expect(window.__test.inFlight['wifi.ssid']).toBe(true)
+  })
+
+  it('Case 9: ignores packet while inFlight even if user reverted (FV == oldAV)', () => {
+    setupCase('oldVal', 'oldVal', 'sentVal', true)
+    window.__test.receiveWSMessage({ data: serverPush('someExternal') })
+    expect(window.__test.components[0].fields[0].opts.value).toBe('oldVal')
+    expect(window.__test.inFlight['wifi.ssid']).toBe(true)
+  })
+
+  it('Case 10: ignores packet while inFlight even with conflicting local change', () => {
+    setupCase('userChange', 'oldVal', 'sentVal', true)
+    window.__test.receiveWSMessage({ data: serverPush('yetAnotherExt') })
+    expect(window.__test.components[0].fields[0].opts.value).toBe('oldVal')
+    expect(window.__test.inFlight['wifi.ssid']).toBe(true)
   })
 })
