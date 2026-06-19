@@ -2,9 +2,16 @@
   "name": "pico-website",
   "private": true,
   "scripts": {
-    "build": "terser app.js -o app.min.js -c -m"
+    "build": "./build.sh",
+    "test": "vitest run && playwright test",
+    "test:unit": "vitest run",
+    "test:e2e": "playwright test",
+    "test:watch": "vitest"
   },
   "devDependencies": {
-    "terser": "^5.0.0"
+    "@playwright/test": "^1.50.0",
+    "jsdom": "^29.1.1",
+    "terser": "^5.0.0",
+    "vitest": "^4.1.9"
   }
 }
