@@ -621,10 +621,9 @@
       input.type = 'checkbox';
       input.name = namePrefix + '.' + key;
       if (opts.value) input.checked = true;
-      applyAttrs(input, opts.attrs);
+      if (opts.tooltip) label.setAttribute('data-tooltip', opts.tooltip);
       label.appendChild(input);
       label.appendChild(document.createTextNode(' ' + labelText + (required ? '*' : '')));
-      if (opts.tooltip) label.setAttribute('title', opts.tooltip);
       return label;
     }
 
@@ -638,7 +637,7 @@
       applyAttrs(input, opts.attrs);
       label.appendChild(input);
       label.appendChild(document.createTextNode(' ' + labelText + (required ? '*' : '')));
-      if (opts.tooltip) label.setAttribute('title', opts.tooltip);
+      if (opts.tooltip) label.setAttribute('data-tooltip', opts.tooltip);
       return label;
     }
 
@@ -646,7 +645,7 @@
       var fieldset = document.createElement('fieldset');
       var legend = document.createElement('legend');
       legend.textContent = labelText + (required ? '*' : '');
-      if (opts.tooltip) legend.setAttribute('title', opts.tooltip);
+      if (opts.tooltip) legend.setAttribute('data-tooltip', opts.tooltip);
       fieldset.appendChild(legend);
       if (opts.options) {
         for (var oi = 0; oi < opts.options.length; oi++) {
@@ -669,7 +668,7 @@
 
     var labelEl = document.createElement('label');
     labelEl.textContent = labelText + (required ? '*' : '');
-    if (opts.tooltip) labelEl.setAttribute('title', opts.tooltip);
+    if (opts.tooltip) labelEl.setAttribute('data-tooltip', opts.tooltip);
     var input;
 
     if (inputTypes.indexOf(type) !== -1) {
