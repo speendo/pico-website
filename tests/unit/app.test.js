@@ -138,10 +138,12 @@ describe('createField', () => {
       key: 'ssid', type: 'text', label: 'SSID',
       opts: { attrs: { maxlength: '32', placeholder: 'MyNetwork' }, tooltip: 'WiFi network name' },
     })
-    expect(field.tagName).toBe('LABEL')
+    expect(field.tagName).toBe('DIV')
+    expect(field.querySelector('label').getAttribute('for')).toBe('wifi.ssid')
     var input = field.querySelector('input')
     expect(input.type).toBe('text')
     expect(input.name).toBe('wifi.ssid')
+    expect(input.id).toBe('wifi.ssid')
     expect(input.maxLength).toBe(32)
     expect(input.placeholder).toBe('MyNetwork')
   })
@@ -151,11 +153,13 @@ describe('createField', () => {
       key: 'mode', type: 'select', label: 'Mode',
       opts: { options: [['station', 'Station'], ['ap', 'AP']], value: 'station' },
     })
+    expect(field.querySelector('label').getAttribute('for')).toBe('wifi.mode')
     var select = field.querySelector('select')
     expect(select.options.length).toBe(2)
     expect(select.options[0].value).toBe('station')
     expect(select.options[1].value).toBe('ap')
     expect(select.value).toBe('station')
+    expect(select.id).toBe('wifi.mode')
   })
 
   it('creates switch (checkbox with role)', () => {
@@ -163,10 +167,12 @@ describe('createField', () => {
       key: 'hidden', type: 'switch', label: 'Hidden',
       opts: { attrs: { role: 'switch' }, value: true },
     })
+    expect(field.querySelector('label').getAttribute('for')).toBe('wifi.hidden')
     var input = field.querySelector('input')
     expect(input.type).toBe('checkbox')
     expect(input.role).toBe('switch')
     expect(input.checked).toBe(true)
+    expect(input.id).toBe('wifi.hidden')
   })
 
   it('creates range with output display', () => {
@@ -174,7 +180,8 @@ describe('createField', () => {
       key: 'channel', type: 'range', label: 'Channel',
       opts: { attrs: { min: '1', max: '13', step: '1' }, value: '6' },
     })
-    expect(field.querySelector('input[type="range"]')).not.toBeNull()
+    expect(field.querySelector('label').getAttribute('for')).toBe('wifi.channel')
+    expect(field.querySelector('input[type="range"]').id).toBe('wifi.channel')
     expect(field.querySelector('output')).not.toBeNull()
   })
 
@@ -183,10 +190,12 @@ describe('createField', () => {
       key: 'pin', type: 'number', label: 'Pin Number',
       opts: { attrs: { min: '0', max: '39' }, value: '2' },
     })
+    expect(field.querySelector('label').getAttribute('for')).toBe('gpio.pin')
     var input = field.querySelector('input[type="number"]')
     expect(input.min).toBe('0')
     expect(input.max).toBe('39')
     expect(input.value).toBe('2')
+    expect(input.id).toBe('gpio.pin')
   })
 
   it('creates radio group', () => {
@@ -198,16 +207,45 @@ describe('createField', () => {
     var radios = field.querySelectorAll('input[type="radio"]')
     expect(radios.length).toBe(3)
     expect(radios[0].value).toBe('none')
+    expect(radios[0].id).toBe('gpio.pull.none')
     expect(radios[1].value).toBe('up')
+    expect(radios[1].id).toBe('gpio.pull.up')
     expect(radios[2].value).toBe('down')
+    expect(radios[2].id).toBe('gpio.pull.down')
+    var labels = field.querySelectorAll('label')
+    expect(labels[0].getAttribute('for')).toBe('gpio.pull.none')
+    expect(labels[1].getAttribute('for')).toBe('gpio.pull.up')
+    expect(labels[2].getAttribute('for')).toBe('gpio.pull.down')
+    expect(field.querySelectorAll('input + label').length).toBe(3)
   })
 
-  it('sets tooltip attribute on label', () => {
+  it('sets tooltip as small helper after input', () => {
     var field = window.createField('wifi', {
       key: 'ssid', type: 'text', label: 'SSID',
       opts: { tooltip: 'Network name' },
     })
-    expect(field.getAttribute('data-tooltip')).toBe('Network name')
+    var small = field.querySelector('small')
+    expect(small).not.toBeNull()
+    expect(small.textContent).toBe('Network name')
+    expect(small.id).toBe('wifi.ssid-helper')
+    expect(field.querySelector('input').getAttribute('aria-describedby')).toBe('wifi.ssid-helper')
+  })
+
+  it('does not create small helper when tooltip is omitted', () => {
+    var field = window.createField('wifi', {
+      key: 'ssid', type: 'text', label: 'SSID',
+    })
+    expect(field.querySelector('small')).toBeNull()
+    expect(field.querySelector('input').getAttribute('aria-describedby')).toBeNull()
+  })
+
+  it('does not create small helper when tooltip is empty', () => {
+    var field = window.createField('wifi', {
+      key: 'ssid', type: 'text', label: 'SSID',
+      opts: { tooltip: '' },
+    })
+    expect(field.querySelector('small')).toBeNull()
+    expect(field.querySelector('input').getAttribute('aria-describedby')).toBeNull()
   })
 
   it('returns null for invalid field spec', () => {

@@ -66,15 +66,16 @@
         var field = comp.fields[fi];
         var el = configForm.querySelector('[name="' + comp.id + '.' + field.key + '"]');
         if (!el) continue;
+        var fopts = field.opts || {};
         if (field.type === 'checkbox' || field.type === 'switch') {
-          el.checked = !!field.opts.value;
+          el.checked = !!fopts.value;
         } else if (field.type === 'radio') {
           var radios = configForm.querySelectorAll('[name="' + comp.id + '.' + field.key + '"]');
           for (var ri = 0; ri < radios.length; ri++) {
-            radios[ri].checked = field.opts.value !== undefined && String(radios[ri].value) === String(field.opts.value);
+            radios[ri].checked = fopts.value !== undefined && String(radios[ri].value) === String(fopts.value);
           }
         } else {
-          el.value = field.opts.value !== undefined ? field.opts.value : '';
+          el.value = fopts.value !== undefined ? fopts.value : '';
         }
       }
     }
@@ -232,6 +233,7 @@
 
     var dirtyFlag = msg._dirty;
     var data = msg.data || msg;
+    dirty = dirtyFlag;
 
     // ── Echo resolution ──
     var echoMatched = false;
@@ -424,6 +426,7 @@
 
   function syncThen() {
     clearError();
+    dirty = false;
     setBaseline();
     updateUI();
   }
@@ -602,50 +605,77 @@
     var inputTypes = ['text', 'email', 'number', 'password', 'tel', 'url', 'color'];
 
     if (type === 'checkbox') {
-      var label = document.createElement('label');
       var input = document.createElement('input');
       input.type = 'checkbox';
-      input.name = namePrefix + '.' + key;
+      input.name = input.id = namePrefix + '.' + key;
       if (opts.value) input.checked = true;
-      if (opts.tooltip) label.setAttribute('data-tooltip', opts.tooltip);
-      label.appendChild(input);
-      label.appendChild(document.createTextNode(' ' + labelText + (required ? '*' : '')));
-      return label;
+      var label = document.createElement('label');
+      label.setAttribute('for', input.id);
+      label.textContent = ' ' + labelText + (required ? '*' : '');
+      var container = document.createElement('div');
+      container.appendChild(input);
+      container.appendChild(label);
+      if (opts.tooltip) {
+        var helper = document.createElement('small');
+        helper.id = input.id + '-helper';
+        helper.textContent = opts.tooltip;
+        input.setAttribute('aria-describedby', helper.id);
+        container.appendChild(helper);
+      }
+      return container;
     }
 
     if (type === 'switch') {
-      var label = document.createElement('label');
       var input = document.createElement('input');
       input.type = 'checkbox';
       input.role = 'switch';
-      input.name = namePrefix + '.' + key;
+      input.name = input.id = namePrefix + '.' + key;
       if (opts.value) input.checked = true;
       applyAttrs(input, opts.attrs);
-      label.appendChild(input);
-      label.appendChild(document.createTextNode(' ' + labelText + (required ? '*' : '')));
-      if (opts.tooltip) label.setAttribute('data-tooltip', opts.tooltip);
-      return label;
+      var label = document.createElement('label');
+      label.setAttribute('for', input.id);
+      label.textContent = ' ' + labelText + (required ? '*' : '');
+      var container = document.createElement('div');
+      container.appendChild(input);
+      container.appendChild(label);
+      if (opts.tooltip) {
+        var helper = document.createElement('small');
+        helper.id = input.id + '-helper';
+        helper.textContent = opts.tooltip;
+        input.setAttribute('aria-describedby', helper.id);
+        container.appendChild(helper);
+      }
+      return container;
     }
 
     if (type === 'radio') {
       var fieldset = document.createElement('fieldset');
       var legend = document.createElement('legend');
       legend.textContent = labelText + (required ? '*' : '');
-      if (opts.tooltip) legend.setAttribute('data-tooltip', opts.tooltip);
       fieldset.appendChild(legend);
+      if (opts.tooltip) {
+        var helper = document.createElement('small');
+        helper.id = namePrefix + '.' + key + '-helper';
+        helper.textContent = opts.tooltip;
+        legend.setAttribute('aria-describedby', helper.id);
+        fieldset.appendChild(helper);
+      }
       if (opts.options) {
         for (var oi = 0; oi < opts.options.length; oi++) {
           var opt = opts.options[oi];
-          var radioLabel = document.createElement('label');
+          var radioId = namePrefix + '.' + key + '.' + opt[0];
           var radio = document.createElement('input');
           radio.type = 'radio';
           radio.name = namePrefix + '.' + key;
+          radio.id = radioId;
           radio.value = opt[0];
           if (opts.value !== undefined && String(opt[0]) === String(opts.value)) {
             radio.checked = true;
           }
-          radioLabel.appendChild(radio);
-          radioLabel.appendChild(document.createTextNode(' ' + opt[1]));
+          var radioLabel = document.createElement('label');
+          radioLabel.setAttribute('for', radioId);
+          radioLabel.textContent = ' ' + opt[1];
+          fieldset.appendChild(radio);
           fieldset.appendChild(radioLabel);
         }
       }
@@ -654,19 +684,19 @@
 
     var labelEl = document.createElement('label');
     labelEl.textContent = labelText + (required ? '*' : '');
-    if (opts.tooltip) labelEl.setAttribute('data-tooltip', opts.tooltip);
     var input;
+    var rangeOutput;
 
     if (inputTypes.indexOf(type) !== -1) {
       input = document.createElement('input');
       input.type = type;
-      input.name = namePrefix + '.' + key;
+      input.name = input.id = namePrefix + '.' + key;
       if (opts.value !== undefined) input.value = opts.value;
       applyAttrs(input, opts.attrs);
     } else if (type === 'range') {
       input = document.createElement('input');
       input.type = 'range';
-      input.name = namePrefix + '.' + key;
+      input.name = input.id = namePrefix + '.' + key;
       if (opts.value !== undefined) input.value = opts.value;
       applyAttrs(input, opts.attrs);
       var valueDisplay = document.createElement('output');
@@ -675,10 +705,10 @@
       input.addEventListener('input', function () {
         valueDisplay.textContent = input.value;
       });
-      labelEl._rangeOutput = valueDisplay;
+      rangeOutput = valueDisplay;
     } else if (type === 'select') {
       input = document.createElement('select');
-      input.name = namePrefix + '.' + key;
+      input.name = input.id = namePrefix + '.' + key;
       if (opts.options) {
         for (var oi = 0; oi < opts.options.length; oi++) {
           var opt = opts.options[oi];
@@ -694,18 +724,28 @@
       applyAttrs(input, opts.attrs);
     } else if (type === 'textarea') {
       input = document.createElement('textarea');
-      input.name = namePrefix + '.' + key;
+      input.name = input.id = namePrefix + '.' + key;
       if (opts.value !== undefined) input.value = opts.value;
       applyAttrs(input, opts.attrs);
     } else {
       return null;
     }
 
-    labelEl.appendChild(input);
-    if (labelEl._rangeOutput) {
-      labelEl.appendChild(labelEl._rangeOutput);
+    labelEl.setAttribute('for', input.id);
+    var container = document.createElement('div');
+    container.appendChild(labelEl);
+    container.appendChild(input);
+    if (opts.tooltip) {
+      var helper = document.createElement('small');
+      helper.id = input.id + '-helper';
+      helper.textContent = opts.tooltip;
+      input.setAttribute('aria-describedby', helper.id);
+      container.appendChild(helper);
     }
-    return labelEl;
+    if (rangeOutput) {
+      container.appendChild(rangeOutput);
+    }
+    return container;
   }
 
   function applyAttrs(el, attrs) {
