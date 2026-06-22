@@ -690,7 +690,7 @@ describe('onUserInput', () => {
 
   it('sends value over WS when field changes', () => {
     window.onUserInput('wifi.ssid', 'NewNet')
-    expect(window.__test.wsSent).toEqual({ action: 'apply', data: { wifi: { ssid: 'NewNet' } } })
+    expect(window.__test.wsSent).toEqual({ action: 'apply', data: { wifi: { ssid: ['text', 'SSID', { value: 'NewNet' }] } } })
   })
 
   it('sets lastSent and inFlight after sending', () => {
@@ -815,7 +815,7 @@ describe('onWSMessage — all 10 state machine cases', () => {
     window.__test.receiveWSMessage({ data: serverPush('sentVal') })
     expect(window.__test.wsSent).toEqual({
       action: 'apply',
-      data: { wifi: { ssid: 'queuedNew' } },
+      data: { wifi: { ssid: ['text', 'SSID', { value: 'queuedNew' }] } },
     })
     expect(window.__test.inFlight['wifi.ssid']).toBe(true)
   })

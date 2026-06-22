@@ -362,13 +362,19 @@
     lastSent[key] = value;
     inFlight[key] = true;
     var parts = key.split('.');
+    var compId = parts[0];
+    var fieldKey = parts[1];
     var patch = {};
-    var cur = patch;
-    for (var i = 0; i < parts.length - 1; i++) {
-      cur[parts[i]] = {};
-      cur = cur[parts[i]];
+    for (var ci = 0; ci < components.length; ci++) {
+      if (components[ci].id !== compId) continue;
+      for (var fi = 0; fi < components[ci].fields.length; fi++) {
+        if (components[ci].fields[fi].key !== fieldKey) continue;
+        patch[compId] = {};
+        patch[compId][fieldKey] = [components[ci].fields[fi].type, components[ci].fields[fi].label, { value: value }];
+        break;
+      }
+      break;
     }
-    cur[parts[parts.length - 1]] = value;
     ws.send(JSON.stringify({action: 'apply', data: patch}));
   }
 
