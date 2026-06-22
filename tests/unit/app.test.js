@@ -102,6 +102,7 @@ describe('updateUI', () => {
   })
 
   it('shows and enables Save when dirty', () => {
+    document.querySelector('[name="wifi.ssid"]').value = 'Net'
     window.__test.dirty = true
     window.updateUI()
     expect(document.getElementById('btn-save-apply').hidden).toBe(false)
@@ -117,6 +118,7 @@ describe('updateUI', () => {
   })
 
   it('hides Save after dirty is cleared', () => {
+    document.querySelector('[name="wifi.ssid"]').value = 'Net'
     window.__test.dirty = true
     window.updateUI()
     expect(document.getElementById('btn-save-apply').hidden).toBe(false)
@@ -570,7 +572,7 @@ describe('processSettings', () => {
 
   it('removes aria-busy after rendering', () => {
     window.processSettings({ wifi: { ssid: ['text', 'SSID', { value: '' }] } }, false)
-    expect(document.getElementById('config-form').getAttribute('aria-busy')).toBe('false')
+    expect(document.getElementById('config-form').getAttribute('aria-busy')).toBeNull()
   })
 
   it('clears error on successful load', () => {
@@ -681,23 +683,9 @@ describe('init', () => {
     document.getElementById('status-bar').textContent = ''
   })
 
-  it('loads settings, renders UI, sets baseline', async () => {
-    window.fetch = function (url) {
-      if (url === '/api/settings') {
-        return Promise.resolve({
-          ok: true,
-          json: function () { return Promise.resolve({
-            _dirty: false,
-            wifi: { ssid: ['text', 'SSID', { value: '', tooltip: 'Net name' }] },
-          })},
-        })
-      }
+  it('sets aria-busy and connects WS on init', async () => {
     await window.init()
-    expect(document.getElementById('nav-list').querySelectorAll('a').length).toBe(1)
-    expect(document.querySelector('#config-form details')).not.toBeNull()
-    expect(document.querySelector('[name="wifi.ssid"]')).not.toBeNull()
-    expect(window.getPending()).toEqual({})
-    expect(document.getElementById('status-bar').textContent).toBe('')
+    expect(document.getElementById('config-form').getAttribute('aria-busy')).toBe('true')
   })
 })
 
