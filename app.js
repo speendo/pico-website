@@ -6,7 +6,6 @@
   var statusBar = document.getElementById('status-bar');
   var footer = document.querySelector('footer');
   var btnSaveApply = document.getElementById('btn-save-apply');
-  var btnReset = document.getElementById('btn-reset');
 
   var baseline = null;
   var components = [];
@@ -106,17 +105,11 @@
     }
   }
 
-  // Drives button states. Two independent conditions:
-  //   btnReset:  enabled when there are pending local changes (FV != AV) AND form is valid
-  //   btnSaveApply: enabled when server _dirty flag is true AND form is valid
   function updateUI() {
-    var changes = getPending();
-    var count = 0;
-    for (var k in changes) count++;
-    var modified = count > 0;
     var formOk = configForm.checkValidity();
-    btnReset.disabled = !(modified && formOk);
-    btnSaveApply.disabled = !(dirty && formOk);
+    var showBtn = dirty && formOk;
+    btnSaveApply.hidden = !showBtn;
+    btnSaveApply.disabled = !showBtn;
   }
 
   function buildPatch(changes) {
@@ -446,12 +439,6 @@
     });
   }
 
-  function handleReset() {
-    clearError();
-    disconnectWS();
-    connectWS();
-  }
-
   function labelFromKey(key) {
     return key
       .replace(/[_-]/g, ' ')
@@ -562,7 +549,6 @@
 
   function wireButtons() {
     btnSaveApply.addEventListener('click', handleSaveApply);
-    btnReset.addEventListener('click', handleReset);
     document.getElementById('notif-load').addEventListener('click', function () {
       hideNotification();
       applyAV();
@@ -600,7 +586,7 @@
   }
 
   async function init() {
-    if (!configForm || !navList || !statusBar || !footer || !btnSaveApply || !btnReset) return;
+    if (!configForm || !navList || !statusBar || !footer || !btnSaveApply) return;
     bindChangeListeners();
     wireButtons();
     connectWS();
@@ -730,5 +716,5 @@
       }
     }
   }
-  /* test-expose */if(window.__TEST_MODE){window.serialize=serialize;window.setBaseline=setBaseline;window.getPending=getPending;window.createField=createField;window.populateFromComponents=populateFromComponents;window.applyAttrs=applyAttrs;window.updateUI=updateUI;window.showError=showError;window.clearError=clearError;window.postJSON=postJSON;window.loadSettings=loadSettings;window.refreshComponents=refreshComponents;window.syncThen=syncThen;window.handleSaveApply=handleSaveApply;window.handleReset=handleReset;window.renderNav=renderNav;window.renderForm=renderForm;window.handleHash=handleHash;window.wireButtons=wireButtons;window.bindChangeListeners=bindChangeListeners;window.init=init;window.buildPatch=buildPatch;window.connectWS=connectWS;window.disconnectWS=disconnectWS;window.processSettings=processSettings;window.onWSMessage=onWSMessage;window.updateAV=updateAV;window.applyAV=applyAV;window.syncLS=syncLS;window.resolveNested=resolveNested;window.sendToServer=sendToServer;window.onUserInput=onUserInput;window.readFormValue=readFormValue;window.showExternalNotification=showExternalNotification;window.showConflictPrompt=showConflictPrompt;window.hideNotification=hideNotification;window.__test={};window.__test.receiveWSMessage=onWSMessage;window.__test.wsReady=function(){if(ws)ws.readyState=1};Object.defineProperty(window.__test,'components',{get:function(){return components},set:function(v){components=v}});Object.defineProperty(window.__test,'dirty',{get:function(){return dirty},set:function(v){dirty=v}});Object.defineProperty(window.__test,'lastSent',{get:function(){return lastSent},set:function(v){lastSent=v}});Object.defineProperty(window.__test,'inFlight',{get:function(){return inFlight},set:function(v){inFlight=v}});}
+  /* test-expose */if(window.__TEST_MODE){window.serialize=serialize;window.setBaseline=setBaseline;window.getPending=getPending;window.createField=createField;window.populateFromComponents=populateFromComponents;window.applyAttrs=applyAttrs;window.updateUI=updateUI;window.showError=showError;window.clearError=clearError;window.postJSON=postJSON;window.loadSettings=loadSettings;window.refreshComponents=refreshComponents;window.syncThen=syncThen;window.handleSaveApply=handleSaveApply;window.renderNav=renderNav;window.renderForm=renderForm;window.handleHash=handleHash;window.wireButtons=wireButtons;window.bindChangeListeners=bindChangeListeners;window.init=init;window.buildPatch=buildPatch;window.connectWS=connectWS;window.disconnectWS=disconnectWS;window.processSettings=processSettings;window.onWSMessage=onWSMessage;window.updateAV=updateAV;window.applyAV=applyAV;window.syncLS=syncLS;window.resolveNested=resolveNested;window.sendToServer=sendToServer;window.onUserInput=onUserInput;window.readFormValue=readFormValue;window.showExternalNotification=showExternalNotification;window.showConflictPrompt=showConflictPrompt;window.hideNotification=hideNotification;window.__test={};window.__test.receiveWSMessage=onWSMessage;window.__test.wsReady=function(){if(ws)ws.readyState=1};Object.defineProperty(window.__test,'components',{get:function(){return components},set:function(v){components=v}});Object.defineProperty(window.__test,'dirty',{get:function(){return dirty},set:function(v){dirty=v}});Object.defineProperty(window.__test,'lastSent',{get:function(){return lastSent},set:function(v){lastSent=v}});Object.defineProperty(window.__test,'inFlight',{get:function(){return inFlight},set:function(v){inFlight=v}});}
 })();
