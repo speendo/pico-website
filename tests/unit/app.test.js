@@ -95,43 +95,38 @@ describe('updateUI', () => {
     window.setBaseline()
   })
 
-  it('disables buttons when no pending changes and not dirty', () => {
+  it('hides and disables Save when not dirty', () => {
     window.updateUI()
+    expect(document.getElementById('btn-save-apply').hidden).toBe(true)
     expect(document.getElementById('btn-save-apply').disabled).toBe(true)
-    expect(document.getElementById('btn-reset').disabled).toBe(true)
   })
 
-  it('enables Reset when pending changes exist', () => {
-    document.querySelector('[name="wifi.ssid"]').value = 'Net'
-    window.updateUI()
-    expect(document.getElementById('btn-reset').disabled).toBe(false)
-  })
-
-  it('disables Reset when form is invalid', () => {
-    document.querySelector('[name="wifi.ssid"]').value = ''
+  it('shows and enables Save when dirty', () => {
     window.__test.dirty = true
     window.updateUI()
-    expect(document.getElementById('btn-reset').disabled).toBe(true)
-  })
-
-  it('enables Save & Apply when dirty is true', () => {
-    window.__test.dirty = true
-    window.updateUI()
+    expect(document.getElementById('btn-save-apply').hidden).toBe(false)
     expect(document.getElementById('btn-save-apply').disabled).toBe(false)
   })
 
-  it('disables Save & Apply when dirty is false', () => {
+  it('disables and hides Save when form is invalid even if dirty', () => {
+    window.__test.dirty = true
+    document.querySelector('[name="wifi.ssid"]').value = ''
     window.updateUI()
+    expect(document.getElementById('btn-save-apply').hidden).toBe(true)
     expect(document.getElementById('btn-save-apply').disabled).toBe(true)
   })
 
-  it('disables Reset when pending is reverted', () => {
-    document.querySelector('[name="wifi.ssid"]').value = 'Net'
+  it('hides Save after dirty is cleared', () => {
+    window.__test.dirty = true
     window.updateUI()
-    expect(document.getElementById('btn-reset').disabled).toBe(false)
-    document.querySelector('[name="wifi.ssid"]').value = ''
+    expect(document.getElementById('btn-save-apply').hidden).toBe(false)
+    window.__test.dirty = false
     window.updateUI()
-    expect(document.getElementById('btn-reset').disabled).toBe(true)
+    expect(document.getElementById('btn-save-apply').hidden).toBe(true)
+  })
+
+  it('btn-reset does not exist in DOM', () => {
+    expect(document.getElementById('btn-reset')).toBeNull()
   })
 })
 
