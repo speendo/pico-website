@@ -540,20 +540,22 @@
       var el = els[ei];
       var key = el.name;
       if (!key) continue;
-      var handler = function () {
-        if (!el.checkValidity()) { updateUI(); return; }
-        var val = (el.type === 'checkbox') ? el.checked :
-                  (el.type === 'number' || el.type === 'range') ? parseFloat(el.value) : el.value;
-        onUserInput(key, val);
-        updateUI();
-      };
-      if (el.type === 'text' || el.type === 'password' || el.type === 'email' ||
-          el.type === 'tel' || el.type === 'url' || el.type === 'textarea') {
-        el.addEventListener('blur', handler);
-      } else {
-        el.addEventListener('change', handler);
-      }
-      el.addEventListener('input', function () { updateUI(); });
+      (function (el, key) {
+        var handler = function () {
+          if (!el.checkValidity()) { updateUI(); return; }
+          var val = (el.type === 'checkbox') ? el.checked :
+                    (el.type === 'number' || el.type === 'range') ? parseFloat(el.value) : el.value;
+          onUserInput(key, val);
+          updateUI();
+        };
+        if (el.type === 'text' || el.type === 'password' || el.type === 'email' ||
+            el.type === 'tel' || el.type === 'url' || el.type === 'textarea') {
+          el.addEventListener('blur', handler);
+        } else {
+          el.addEventListener('change', handler);
+        }
+        el.addEventListener('input', function () { updateUI(); });
+      })(el, key);
     }
   }
 
