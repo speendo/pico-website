@@ -256,6 +256,42 @@ describe('createField', () => {
   })
 })
 
+describe('addHelperText', function () {
+  it('creates small element with aria-describedby', function () {
+    var container = document.createElement('div')
+    var input = document.createElement('input')
+    input.id = 'test.field'
+    container.appendChild(input)
+    window.addHelperText(container, input.id, 'Help text', input)
+    var small = container.querySelector('small')
+    expect(small).not.toBeNull()
+    expect(small.id).toBe('test.field-helper')
+    expect(small.textContent).toBe('Help text')
+    expect(input.getAttribute('aria-describedby')).toBe('test.field-helper')
+  })
+
+  it('creates small without aria-describedby when describedEl is absent', function () {
+    var container = document.createElement('div')
+    window.addHelperText(container, 'radio.key', 'Radio help', null)
+    var small = container.querySelector('small')
+    expect(small).not.toBeNull()
+    expect(small.id).toBe('radio.key-helper')
+    expect(small.textContent).toBe('Radio help')
+  })
+
+  it('does nothing when text is empty', function () {
+    var container = document.createElement('div')
+    window.addHelperText(container, 'x.y', '', null)
+    expect(container.querySelector('small')).toBeNull()
+  })
+
+  it('does nothing when text is undefined', function () {
+    var container = document.createElement('div')
+    window.addHelperText(container, 'x.y', undefined, null)
+    expect(container.querySelector('small')).toBeNull()
+  })
+})
+
 describe('applyAttrs', () => {
   it('sets multiple attributes on an element', () => {
     var el = document.createElement('input')

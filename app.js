@@ -633,13 +633,7 @@
       var container = document.createElement('div');
       container.appendChild(input);
       container.appendChild(label);
-      if (opts.tooltip) {
-        var helper = document.createElement('small');
-        helper.id = input.id + '-helper';
-        helper.textContent = opts.tooltip;
-        input.setAttribute('aria-describedby', helper.id);
-        container.appendChild(helper);
-      }
+      addHelperText(container, input.id, opts.tooltip, input);
       return container;
     }
 
@@ -656,13 +650,7 @@
       var container = document.createElement('div');
       container.appendChild(input);
       container.appendChild(label);
-      if (opts.tooltip) {
-        var helper = document.createElement('small');
-        helper.id = input.id + '-helper';
-        helper.textContent = opts.tooltip;
-        input.setAttribute('aria-describedby', helper.id);
-        container.appendChild(helper);
-      }
+      addHelperText(container, input.id, opts.tooltip, input);
       return container;
     }
 
@@ -692,12 +680,7 @@
       }
       var container = document.createElement('div');
       container.appendChild(fieldset);
-      if (opts.tooltip) {
-        var helper = document.createElement('small');
-        helper.id = namePrefix + '.' + key + '-helper';
-        helper.textContent = opts.tooltip;
-        container.appendChild(helper);
-      }
+      addHelperText(container, namePrefix + '.' + key, opts.tooltip, null);
       return container;
     }
 
@@ -753,14 +736,8 @@
     labelEl.setAttribute('for', input.id);
     var container = document.createElement('div');
     container.appendChild(labelEl);
-    container.appendChild(input);
-    if (opts.tooltip) {
-      var helper = document.createElement('small');
-      helper.id = input.id + '-helper';
-      helper.textContent = opts.tooltip;
-      input.setAttribute('aria-describedby', helper.id);
-      container.appendChild(helper);
-    }
+      container.appendChild(input);
+      addHelperText(container, input.id, opts.tooltip, input);
     if (rangeOutput) {
       container.appendChild(rangeOutput);
     }
@@ -775,5 +752,14 @@
       }
     }
   }
-  /* test-expose */if(window.__TEST_MODE){window.serialize=serialize;window.setBaseline=setBaseline;window.getPending=getPending;window.createField=createField;window.populateFromComponents=populateFromComponents;window.applyAttrs=applyAttrs;window.updateUI=updateUI;window.showError=showError;window.clearError=clearError;window.postJSON=postJSON;window.loadSettings=loadSettings;window.refreshComponents=refreshComponents;window.syncThen=syncThen;window.handleSaveApply=handleSaveApply;window.renderNav=renderNav;window.renderForm=renderForm;window.handleHash=handleHash;window.wireButtons=wireButtons;window.bindChangeListeners=bindChangeListeners;window.init=init;window.buildPatch=buildPatch;window.connectWS=connectWS;window.disconnectWS=disconnectWS;window.onWSClose=onWSClose;window.processSettings=processSettings;window.onWSMessage=onWSMessage;window.updateAV=updateAV;window.applyAV=applyAV;window.syncLS=syncLS;window.resolveNested=resolveNested;window.sendToServer=sendToServer;window.onUserInput=onUserInput;window.readFormValue=readFormValue;window.showExternalNotification=showExternalNotification;window.showConflictPrompt=showConflictPrompt;window.hideNotification=hideNotification;window.__test={};window.__test.receiveWSMessage=onWSMessage;window.__test.wsReady=function(){if(ws)ws.readyState=1};Object.defineProperty(window.__test,'components',{get:function(){return components},set:function(v){components=v}});Object.defineProperty(window.__test,'dirty',{get:function(){return dirty},set:function(v){dirty=v}});Object.defineProperty(window.__test,'lastSent',{get:function(){return lastSent},set:function(v){lastSent=v}});Object.defineProperty(window.__test,'inFlight',{get:function(){return inFlight},set:function(v){inFlight=v}});}
+
+  function addHelperText(container, baseId, text, describedEl) {
+    if (!text) return;
+    var helper = document.createElement('small');
+    helper.id = baseId + '-helper';
+    helper.textContent = text;
+    if (describedEl) describedEl.setAttribute('aria-describedby', helper.id);
+    container.appendChild(helper);
+  }
+  /* test-expose */if(window.__TEST_MODE){window.serialize=serialize;window.setBaseline=setBaseline;window.getPending=getPending;window.createField=createField;window.populateFromComponents=populateFromComponents;window.applyAttrs=applyAttrs;window.addHelperText=addHelperText;window.updateUI=updateUI;window.showError=showError;window.clearError=clearError;window.postJSON=postJSON;window.loadSettings=loadSettings;window.refreshComponents=refreshComponents;window.syncThen=syncThen;window.handleSaveApply=handleSaveApply;window.renderNav=renderNav;window.renderForm=renderForm;window.handleHash=handleHash;window.wireButtons=wireButtons;window.bindChangeListeners=bindChangeListeners;window.init=init;window.buildPatch=buildPatch;window.connectWS=connectWS;window.disconnectWS=disconnectWS;window.onWSClose=onWSClose;window.processSettings=processSettings;window.onWSMessage=onWSMessage;window.updateAV=updateAV;window.applyAV=applyAV;window.syncLS=syncLS;window.resolveNested=resolveNested;window.sendToServer=sendToServer;window.onUserInput=onUserInput;window.readFormValue=readFormValue;window.showExternalNotification=showExternalNotification;window.showConflictPrompt=showConflictPrompt;window.hideNotification=hideNotification;window.__test={};window.__test.receiveWSMessage=onWSMessage;window.__test.wsReady=function(){if(ws)ws.readyState=1};Object.defineProperty(window.__test,'components',{get:function(){return components},set:function(v){components=v}});Object.defineProperty(window.__test,'dirty',{get:function(){return dirty},set:function(v){dirty=v}});Object.defineProperty(window.__test,'lastSent',{get:function(){return lastSent},set:function(v){lastSent=v}});Object.defineProperty(window.__test,'inFlight',{get:function(){return inFlight},set:function(v){inFlight=v}});}
 })();
