@@ -55,7 +55,7 @@ Each key under a component group is a 3-element array:
 ```
 
 - `type` — one of: `text`, `number`, `password`, `email`, `tel`, `url`, `color`,
-  `checkbox`, `switch`, `radio`, `select`, `range`, `textarea`
+  `switch`, `radio`, `select`, `range`, `textarea`
 - `label` — display name for the form field
 - `opts` — dictionary with keys:
   - `value` — current applied value (replaces `default` from old format)
