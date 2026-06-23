@@ -1103,6 +1103,39 @@ describe('dirty flag survives dropped WS messages', () => {
   })
 })
 
+describe('echo resolution with radio does not trigger spurious queued keys', () => {
+  beforeEach(() => {
+    document.querySelector('#config-form').innerHTML = [
+      '<input type="radio" name="gpio.pull" value="none" />',
+      '<input type="radio" name="gpio.pull" value="up" checked />',
+      '<input type="radio" name="gpio.pull" value="down" />',
+    ].join('')
+    window.__test.components = [{
+      id: 'gpio', fields: [
+        { key: 'pull', type: 'radio', label: 'Pull Resistor', opts: { value: 'none' } },
+      ],
+    }]
+    window.__test.lastSent = {}
+    window.__test.inFlight = {}
+    window.__test.dirty = false
+    window.__test.lastSent['gpio.pull'] = 'up'
+    window.__test.inFlight['gpio.pull'] = true
+    document.getElementById('server-changed').hidden = true
+  })
+
+  it('echo match does not queue spurious change for radio', () => {
+    window.__test.receiveWSMessage({
+      data: JSON.stringify({
+        _dirty: true,
+        gpio: { pull: ['radio', 'Pull Resistor', { value: 'up' }] },
+      }),
+    })
+    expect(window.__test.inFlight['gpio.pull']).toBe(false)
+    expect(window.__test.dirty).toBe(true)
+    expect(window.__test.components[0].fields[0].opts.value).toBe('up')
+  })
+})
+
 describe('footer visibility (CSS-only)', () => {
   beforeEach(() => {
     document.getElementById('status-bar').textContent = ''
