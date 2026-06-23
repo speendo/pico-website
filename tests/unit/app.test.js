@@ -165,7 +165,7 @@ describe('createField', () => {
   it('creates switch (checkbox with role)', () => {
     var field = window.createField('wifi', {
       key: 'hidden', type: 'switch', label: 'Hidden',
-      opts: { attrs: { role: 'switch' }, value: true },
+      opts: { value: true },
     })
     expect(field.querySelector('label').getAttribute('for')).toBe('wifi.hidden')
     var input = field.querySelector('input')
@@ -655,6 +655,47 @@ describe('processSettings', () => {
     document.getElementById('status-bar').textContent = 'Previous error'
     window.processSettings({ wifi: { ssid: ['text', 'SSID', { value: '' }] } }, false)
     expect(document.getElementById('status-bar').textContent).toBe('')
+  })
+})
+
+describe('findField', function () {
+  beforeEach(function () {
+    window.__test.components = [
+      { id: 'wifi', fields: [
+        { key: 'ssid', type: 'text', label: 'SSID', opts: { value: 'MyNet' } },
+        { key: 'channel', type: 'range', label: 'Channel', opts: { value: 6 } },
+      ]},
+      { id: 'gpio', fields: [
+        { key: 'pin', type: 'number', label: 'Pin', opts: { value: 2 } },
+      ]},
+    ]
+  })
+
+  it('returns the field object for a matching comp and key', function () {
+    var field = window.findField('wifi', 'ssid')
+    expect(field).not.toBeNull()
+    expect(field.key).toBe('ssid')
+    expect(field.type).toBe('text')
+  })
+
+  it('returns the field for a different component', function () {
+    var field = window.findField('gpio', 'pin')
+    expect(field).not.toBeNull()
+    expect(field.key).toBe('pin')
+    expect(field.opts.value).toBe(2)
+  })
+
+  it('returns null for unknown component ID', function () {
+    expect(window.findField('nonexistent', 'ssid')).toBeNull()
+  })
+
+  it('returns null for unknown field key', function () {
+    expect(window.findField('wifi', 'nonexistent')).toBeNull()
+  })
+
+  it('returns null for component with no fields', function () {
+    window.__test.components = [{ id: 'empty' }]
+    expect(window.findField('empty', 'x')).toBeNull()
   })
 })
 

@@ -113,6 +113,19 @@
     btnSaveApply.disabled = !showBtn;
   }
 
+  function findField(compId, fieldKey) {
+    for (var ci = 0; ci < components.length; ci++) {
+      if (components[ci].id !== compId) continue;
+      var fields = components[ci].fields;
+      if (!fields) return null;
+      for (var fi = 0; fi < fields.length; fi++) {
+        if (fields[fi].key === fieldKey) return fields[fi];
+      }
+      return null;
+    }
+    return null;
+  }
+
   function buildPatch(changes) {
     var data = {};
     for (var name in changes) {
@@ -120,18 +133,8 @@
       var compId = name.slice(0, dot);
       var fieldKey = name.slice(dot + 1);
       if (!data[compId]) data[compId] = {};
-      for (var ci = 0; ci < components.length; ci++) {
-        if (components[ci].id === compId) {
-          var fields = components[ci].fields;
-          for (var fi = 0; fi < fields.length; fi++) {
-            if (fields[fi].key === fieldKey) {
-              data[compId][fieldKey] = [fields[fi].type, fields[fi].label, { value: changes[name] }];
-              break;
-            }
-          }
-          break;
-        }
-      }
+      var field = findField(compId, fieldKey);
+      if (field) data[compId][fieldKey] = [field.type, field.label, { value: changes[name] }];
     }
     return data;
   }
@@ -368,17 +371,11 @@
     var parts = key.split('.');
     var compId = parts[0];
     var fieldKey = parts[1];
+    var field = findField(compId, fieldKey);
+    if (!field) return;
     var patch = {};
-    for (var ci = 0; ci < components.length; ci++) {
-      if (components[ci].id !== compId) continue;
-      for (var fi = 0; fi < components[ci].fields.length; fi++) {
-        if (components[ci].fields[fi].key !== fieldKey) continue;
-        patch[compId] = {};
-        patch[compId][fieldKey] = [components[ci].fields[fi].type, components[ci].fields[fi].label, { value: value }];
-        break;
-      }
-      break;
-    }
+    patch[compId] = {};
+    patch[compId][fieldKey] = [field.type, field.label, { value: value }];
     ws.send(JSON.stringify({action: 'apply', data: patch}));
   }
 
@@ -622,25 +619,10 @@
     var required = opts.attrs && opts.attrs.required;
     var inputTypes = ['text', 'email', 'number', 'password', 'tel', 'url', 'color'];
 
-    if (type === 'checkbox') {
+    if (type === 'checkbox' || type === 'switch') {
       var input = document.createElement('input');
       input.type = 'checkbox';
-      input.name = input.id = namePrefix + '.' + key;
-      if (opts.value) input.checked = true;
-      var label = document.createElement('label');
-      label.setAttribute('for', input.id);
-      label.textContent = ' ' + labelText + (required ? '*' : '');
-      var container = document.createElement('div');
-      container.appendChild(input);
-      container.appendChild(label);
-      addHelperText(container, input.id, opts.tooltip, input);
-      return container;
-    }
-
-    if (type === 'switch') {
-      var input = document.createElement('input');
-      input.type = 'checkbox';
-      input.role = 'switch';
+      if (type === 'switch') input.role = 'switch';
       input.name = input.id = namePrefix + '.' + key;
       if (opts.value) input.checked = true;
       applyAttrs(input, opts.attrs);
@@ -761,5 +743,5 @@
     if (describedEl) describedEl.setAttribute('aria-describedby', helper.id);
     container.appendChild(helper);
   }
-  /* test-expose */if(window.__TEST_MODE){window.serialize=serialize;window.setBaseline=setBaseline;window.getPending=getPending;window.createField=createField;window.populateFromComponents=populateFromComponents;window.applyAttrs=applyAttrs;window.addHelperText=addHelperText;window.updateUI=updateUI;window.showError=showError;window.clearError=clearError;window.postJSON=postJSON;window.loadSettings=loadSettings;window.refreshComponents=refreshComponents;window.syncThen=syncThen;window.handleSaveApply=handleSaveApply;window.renderNav=renderNav;window.renderForm=renderForm;window.handleHash=handleHash;window.wireButtons=wireButtons;window.bindChangeListeners=bindChangeListeners;window.init=init;window.buildPatch=buildPatch;window.connectWS=connectWS;window.disconnectWS=disconnectWS;window.onWSClose=onWSClose;window.processSettings=processSettings;window.onWSMessage=onWSMessage;window.updateAV=updateAV;window.applyAV=applyAV;window.syncLS=syncLS;window.resolveNested=resolveNested;window.sendToServer=sendToServer;window.onUserInput=onUserInput;window.readFormValue=readFormValue;window.showExternalNotification=showExternalNotification;window.showConflictPrompt=showConflictPrompt;window.hideNotification=hideNotification;window.__test={};window.__test.receiveWSMessage=onWSMessage;window.__test.wsReady=function(){if(ws)ws.readyState=1};Object.defineProperty(window.__test,'components',{get:function(){return components},set:function(v){components=v}});Object.defineProperty(window.__test,'dirty',{get:function(){return dirty},set:function(v){dirty=v}});Object.defineProperty(window.__test,'lastSent',{get:function(){return lastSent},set:function(v){lastSent=v}});Object.defineProperty(window.__test,'inFlight',{get:function(){return inFlight},set:function(v){inFlight=v}});}
+  /* test-expose */if(window.__TEST_MODE){window.serialize=serialize;window.setBaseline=setBaseline;window.getPending=getPending;window.createField=createField;window.populateFromComponents=populateFromComponents;window.applyAttrs=applyAttrs;window.addHelperText=addHelperText;window.findField=findField;window.updateUI=updateUI;window.showError=showError;window.clearError=clearError;window.postJSON=postJSON;window.loadSettings=loadSettings;window.refreshComponents=refreshComponents;window.syncThen=syncThen;window.handleSaveApply=handleSaveApply;window.renderNav=renderNav;window.renderForm=renderForm;window.handleHash=handleHash;window.wireButtons=wireButtons;window.bindChangeListeners=bindChangeListeners;window.init=init;window.buildPatch=buildPatch;window.connectWS=connectWS;window.disconnectWS=disconnectWS;window.onWSClose=onWSClose;window.processSettings=processSettings;window.onWSMessage=onWSMessage;window.updateAV=updateAV;window.applyAV=applyAV;window.syncLS=syncLS;window.resolveNested=resolveNested;window.sendToServer=sendToServer;window.onUserInput=onUserInput;window.readFormValue=readFormValue;window.showExternalNotification=showExternalNotification;window.showConflictPrompt=showConflictPrompt;window.hideNotification=hideNotification;window.__test={};window.__test.receiveWSMessage=onWSMessage;window.__test.wsReady=function(){if(ws)ws.readyState=1};Object.defineProperty(window.__test,'components',{get:function(){return components},set:function(v){components=v}});Object.defineProperty(window.__test,'dirty',{get:function(){return dirty},set:function(v){dirty=v}});Object.defineProperty(window.__test,'lastSent',{get:function(){return lastSent},set:function(v){lastSent=v}});Object.defineProperty(window.__test,'inFlight',{get:function(){return inFlight},set:function(v){inFlight=v}});}
 })();
