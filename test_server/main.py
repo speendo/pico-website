@@ -1,4 +1,5 @@
 import json
+import time
 from pathlib import Path
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, PlainTextResponse
@@ -28,8 +29,23 @@ SETTINGS = {
     },
 }
 
+STATUS = {
+    "system": {
+        "heap_free":  ["text", "Free Heap",  {"value": None, "tooltip": "Available heap in bytes"}],
+        "uptime":     ["text", "Uptime",     {"value": None}],
+        "fw_version": ["text", "Firmware",   {"value": "2.1.0"}],
+        "mac":        ["text", "MAC Address", {"value": "a4:cf:12:34:56:78"}],
+    },
+    "sensors": {
+        "temperature": ["number", "Temperature", {"value": "23.5", "tooltip": "Celsius"}],
+        "humidity":    ["number", "Humidity",    {"value": "48.2"}],
+    },
+}
+
 nvs_store: dict[str, object] = {}
 applied_store: dict[str, object] = {}
+status_store: dict[str, object] = {}
+start_time = time.time()
 connected: set[WebSocket] = set()
 
 
@@ -42,6 +58,13 @@ async def startup():
             store_key = comp_id + "." + key
             nvs_store[store_key] = val
             applied_store[store_key] = val
+    for comp_id, fields in STATUS.items():
+        for key, field_def in fields.items():
+            opts = field_def[2]
+            val = opts.get("value")
+            if val is not None:
+                store_key = comp_id + "." + key
+                status_store[store_key] = val
 
 
 def build_settings():
@@ -55,6 +78,32 @@ def build_settings():
             store_key = comp_id + "." + key
             if store_key in applied_store:
                 opts["value"] = applied_store[store_key]
+            group[key] = [ftype, flabel, opts]
+        result[comp_id] = group
+    return result
+
+
+def build_status():
+    elapsed = time.time() - start_time
+    hours = int(elapsed // 3600)
+    minutes = int((elapsed % 3600) // 60)
+    days = hours // 24
+    uptime_str = f"{days}d {hours % 24}h {minutes}m"
+    heap_val = max(10000, 123456 - int(elapsed * 10) % 50000)
+
+    result = {}
+    for comp_id, fields in STATUS.items():
+        group = {}
+        for key, field_def in fields.items():
+            ftype, flabel, fopts = field_def
+            opts = dict(fopts)
+            if key == "uptime":
+                opts["value"] = uptime_str
+            elif key == "heap_free":
+                opts["value"] = str(heap_val)
+            else:
+                store_key = comp_id + "." + key
+                opts["value"] = status_store.get(store_key, opts.get("value", ""))
             group[key] = [ftype, flabel, opts]
         result[comp_id] = group
     return result
@@ -108,12 +157,13 @@ async def api_settings_apply(request: Request):
     return {}
 
 
-@app.websocket("/api/settings/ws")
-async def settings_ws(ws: WebSocket):
+@app.websocket("/api/events")
+async def events_ws(ws: WebSocket):
     await ws.accept()
     connected.add(ws)
     try:
-        await ws.send_json(build_settings())
+        await ws.send_json({"type": "status", "data": build_status()})
+        await ws.send_json({"type": "settings", "_dirty": nvs_store != applied_store, "data": build_settings()})
         while True:
             raw = await ws.receive_text()
             msg = json.loads(raw)
@@ -129,7 +179,7 @@ async def settings_ws(ws: WebSocket):
                 payload = build_settings()
                 for client in list(connected):
                     try:
-                        await client.send_json(payload)
+                        await client.send_json({"type": "settings", "_dirty": nvs_store != applied_store, "data": payload})
                     except Exception:
                         connected.discard(client)
     except WebSocketDisconnect:
@@ -147,11 +197,30 @@ async def external_change(body: dict):
         for field_key, field_arr in fields.items():
             store_key = group_key + "." + field_key
             if store_key in applied_store:
+                nvs_store[store_key] = field_arr[2]["value"]
                 applied_store[store_key] = field_arr[2]["value"]
     payload = build_settings()
     for client in list(connected):
         try:
-            await client.send_json(payload)
+            await client.send_json({"type": "settings", "_dirty": nvs_store != applied_store, "data": payload})
+        except Exception:
+            connected.discard(client)
+    return {"ok": True}
+
+
+@app.post("/api/settings/external-status-change")
+async def external_status_change(body: dict):
+    """Simulate an external status update (for e2e testing)."""
+    for group_key, fields in body.items():
+        if group_key not in STATUS:
+            continue
+        for field_key, field_arr in fields.items():
+            store_key = group_key + "." + field_key
+            status_store[store_key] = field_arr[2]["value"]
+    payload = build_status()
+    for client in list(connected):
+        try:
+            await client.send_json({"type": "status", "data": payload})
         except Exception:
             connected.discard(client)
     return {"ok": True}
