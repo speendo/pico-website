@@ -595,6 +595,7 @@
       var li = document.createElement('li');
       var a = document.createElement('a');
       a.href = '#' + comp.id;
+      a.className = 'secondary';
       a.textContent = comp.label;
       li.appendChild(a);
       navList.appendChild(li);
