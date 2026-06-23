@@ -1207,16 +1207,16 @@ describe('status message routing', () => {
 
   it('routes type:status message to processStatus', () => {
     window.__test.receiveWSMessage({
-      data: JSON.stringify({ type: 'status', data: { system: { uptime: ['text', 'Uptime', { value: '1d 0h 0m' }] } } }),
+      data: JSON.stringify({ type: 'status', data: { network: { signal: ['range', 'Signal', { value: '75' }] } } }),
     })
     expect(window.__test.statusComponents.length).toBe(1)
-    expect(window.__test.statusComponents[0].id).toBe('system')
-    expect(window.__test.statusComponents[0].fields[0].key).toBe('uptime')
+    expect(window.__test.statusComponents[0].id).toBe('network')
+    expect(window.__test.statusComponents[0].fields[0].key).toBe('signal')
   })
 
   it('does not route status message to settings handling', () => {
     window.__test.receiveWSMessage({
-      data: JSON.stringify({ type: 'status', data: { system: { uptime: ['text', 'Uptime', { value: '1d 0h 0m' }] } } }),
+      data: JSON.stringify({ type: 'status', data: { network: { signal: ['range', 'Signal', { value: '75' }] } } }),
     })
     expect(window.__test.dirty).toBe(false)
     expect(window.__test.components.length).toBe(0)
