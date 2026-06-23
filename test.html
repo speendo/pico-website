@@ -28,9 +28,6 @@
       #server-changed[hidden] { display: none; }
       #status-bar:empty { display: none; }
       footer .container { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; width: 100%; }
-      footer:not(:has(button:not([hidden]))):has(#status-bar:empty) {
-        display: none;
-      }
     </style>
 </head>
 <body>
@@ -45,7 +42,7 @@
         </nav>
     </header>
 
-  <mark id="server-changed" class="sticky-bar top" role="alert" hidden>
+  <mark id="server-changed" role="alert" hidden>
     <span id="notif-text"></span>
     <button id="notif-load" hidden>Load</button>
     <button id="notif-keep" hidden>Keep</button>
@@ -54,8 +51,19 @@
   </mark>
 
     <main class="container">
-        <form id="config-form" aria-busy="true">
-            <!-- JS populates details sections here -->
+        <form id="config-form">
+            <details id="wifi" open>
+                <summary>
+                    Wifi
+                </summary>
+                <label data-tooltip="WiFi network name">
+                    SSID
+                    <input type="text" name="wifi_ssid" maxlength="32" placeholder="MyNetwork">
+                </label>
+                <label data-tooltip="WiFi network password">
+                    Password
+                    <input type="password" name="wifi_password" maxlength="63" placeholder="MyPassword">
+                </label>
         </form>
     </main>
 
@@ -63,7 +71,8 @@
       <div class="container">
         <mark id="status-bar"></mark>
         <div role="group">
-          <button id="btn-save-apply" class="contrast" disabled hidden>Save</button>
+          <button id="btn-save-apply" class="contrast" disabled>Save &amp; Apply</button>
+          <button id="btn-reset" class="secondary" disabled>Reset</button>
         </div>
       </div>
     </footer>

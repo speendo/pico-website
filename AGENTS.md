@@ -20,6 +20,13 @@ current architecture and API design.
 
 # Commands
 
+Node.js is at `/config/.nvm/versions/node/v24.17.0/bin/`. Source nvm first:
+
+```bash
+. ~/.nvm/nvm.sh
+export PATH="/config/.nvm/versions/node/v24.17.0/bin:$PATH"
+```
+
 - `npm run build` — minify `app.js` → `app.min.js` via terser
 - `npm test` — run all tests (unit + e2e)
 - `npm run test:unit` — vitest unit tests only
@@ -33,7 +40,7 @@ run (configured in `playwright.config.js` webServer). Start it manually:
 
 ```bash
 pip install fastapi uvicorn
-uvicorn test_server.main:app --host 127.0.0.1 --port 8765
+uvicorn test_server.main:app --host 0.0.0.0 --port 8000
 ```
 
 # Playwright E2E Tests

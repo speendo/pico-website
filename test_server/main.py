@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, PlainTextResponse
 
 app = FastAPI()
@@ -22,12 +22,14 @@ SETTINGS = {
         "pin": ["number", "Pin Number", {"attrs": {"min": 0, "max": 39, "placeholder": "0"}, "value": 2, "tooltip": "GPIO pin number"}],
         "direction": ["select", "Direction", {"options": [["input", "Input"], ["output", "Output"]], "value": "output", "tooltip": "Pin direction"}],
         "pull": ["radio", "Pull Resistor", {"options": [["none", "None"], ["up", "Pull Up"], ["down", "Pull Down"]], "value": "none", "tooltip": "Internal pull resistor"}],
+        "enabled": ["checkbox", "GPIO Enabled", {"value": True, "tooltip": "Enable this GPIO pin"}],
         "initial": ["select", "Initial State", {"options": [["low", "Low"], ["high", "High"]], "value": "low", "tooltip": "Initial output state"}],
     },
 }
 
 nvs_store: dict[str, object] = {}
 applied_store: dict[str, object] = {}
+connected: set[WebSocket] = set()
 
 
 @app.on_event("startup")
@@ -41,9 +43,9 @@ async def startup():
             applied_store[store_key] = val
 
 
-@app.get("/api/settings")
-async def get_settings():
-    result = {"_dirty": nvs_store != applied_store}
+def build_settings():
+    result = {}
+    result["_dirty"] = nvs_store != applied_store
     for comp_id, fields in SETTINGS.items():
         group = {}
         for key, field_def in fields.items():
@@ -55,6 +57,11 @@ async def get_settings():
             group[key] = [ftype, flabel, opts]
         result[comp_id] = group
     return result
+
+
+@app.get("/api/settings")
+async def get_settings():
+    return build_settings()
 
 
 @app.post("/api/settings/save")
@@ -98,6 +105,55 @@ async def api_settings_apply(request: Request):
                 store_key = comp_id + "." + key
                 applied_store[store_key] = opts["value"]
     return {}
+
+
+@app.websocket("/api/settings/ws")
+async def settings_ws(ws: WebSocket):
+    await ws.accept()
+    connected.add(ws)
+    try:
+        await ws.send_json(build_settings())
+        while True:
+            raw = await ws.receive_text()
+            msg = json.loads(raw)
+            if msg.get("action") == "apply":
+                for group_key, fields in msg.get("data", {}).items():
+                    for field_key, field_arr in fields.items():
+                        schema_entry = SETTINGS.get(group_key, {}).get(field_key)
+                        if schema_entry is None:
+                            continue
+                        _, _, opts = schema_entry
+                        store_key = group_key + "." + field_key
+                        applied_store[store_key] = field_arr[2]["value"]
+                payload = build_settings()
+                for client in list(connected):
+                    try:
+                        await client.send_json(payload)
+                    except Exception:
+                        connected.discard(client)
+    except WebSocketDisconnect:
+        pass
+    finally:
+        connected.discard(ws)
+
+
+@app.post("/api/settings/external-change")
+async def external_change(body: dict):
+    """Simulate an external config change (for e2e testing of server-push)."""
+    for group_key, fields in body.items():
+        if group_key not in SETTINGS:
+            continue
+        for field_key, field_arr in fields.items():
+            store_key = group_key + "." + field_key
+            if store_key in applied_store:
+                applied_store[store_key] = field_arr[2]["value"]
+    payload = build_settings()
+    for client in list(connected):
+        try:
+            await client.send_json(payload)
+        except Exception:
+            connected.discard(client)
+    return {"ok": True}
 
 
 @app.api_route("/manifest.json", methods=["GET", "POST"])
