@@ -5,3 +5,4 @@ test-deps/lib/
 test-deps/debs/
 test-deps/_extract/
 test-deps/*.bak/
+test-results/
