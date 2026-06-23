@@ -1131,6 +1131,57 @@ describe('echo resolution with switch preserves dirty', () => {
   })
 })
 
+describe('status rendering', () => {
+  var origStatus;
+
+  beforeEach(() => {
+    document.querySelector('#config-form').innerHTML = ''
+    document.getElementById('nav-list').innerHTML = ''
+    window.__test.components = [
+      { id: 'wifi', label: 'Wifi', fields: [
+        { key: 'ssid', type: 'text', label: 'SSID', opts: { value: 'Net' } },
+      ]},
+    ]
+    origStatus = window.__test.statusComponents
+    window.__test.statusComponents = [
+      { id: 'system', label: 'System', fields: [
+        { key: 'uptime', type: 'text', label: 'Uptime', opts: { value: '1d 0h' } },
+      ]},
+    ]
+  })
+
+  afterEach(() => {
+    window.__test.statusComponents = origStatus
+  })
+
+  it('renders status sections before settings sections', () => {
+    window.renderForm()
+    var details = document.querySelectorAll('#config-form details')
+    expect(details.length).toBe(2)
+    expect(details[0].id).toBe('system')
+    expect(details[1].id).toBe('wifi')
+  })
+
+  it('status summary has secondary class', () => {
+    window.renderForm()
+    var summary = document.querySelector('#system summary')
+    expect(summary.className).toBe('secondary')
+    expect(document.querySelector('#wifi summary').className).toBe('')
+  })
+
+  it('status field is disabled', () => {
+    window.renderForm()
+    var input = document.querySelector('[name="system.uptime"]')
+    expect(input.disabled).toBe(true)
+  })
+
+  it('settings field is not disabled', () => {
+    window.renderForm()
+    var input = document.querySelector('[name="wifi.ssid"]')
+    expect(input.disabled).toBe(false)
+  })
+})
+
 describe('footer visibility (CSS-only)', () => {
   beforeEach(() => {
     document.getElementById('status-bar').textContent = ''

@@ -587,9 +587,18 @@
       .replace(/\b\w/g, function (c) { return c.toUpperCase(); });
   }
 
-  /** Render navigation links in #nav-list from the components array. */
+  /** Render navigation links in #nav-list from statusComponents and components. */
   function renderNav() {
     navList.innerHTML = '';
+    for (var si = 0; si < statusComponents.length; si++) {
+      var comp = statusComponents[si];
+      var li = document.createElement('li');
+      var a = document.createElement('a');
+      a.href = '#' + comp.id;
+      a.textContent = comp.label;
+      li.appendChild(a);
+      navList.appendChild(li);
+    }
     for (var ci = 0; ci < components.length; ci++) {
       var comp = components[ci];
       var li = document.createElement('li');
@@ -610,9 +619,25 @@
     });
   }
 
-  /** Render the accordion form in #config-form from the components array. */
+  /** Render the accordion form in #config-form from statusComponents first, then components. */
   function renderForm() {
     configForm.innerHTML = '';
+    for (var si = 0; si < statusComponents.length; si++) {
+      var comp = statusComponents[si];
+      var details = document.createElement('details');
+      details.id = comp.id;
+      var summary = document.createElement('summary');
+      summary.className = 'secondary';
+      summary.textContent = comp.label;
+      details.appendChild(summary);
+      if (comp.fields) {
+        for (var fi = 0; fi < comp.fields.length; fi++) {
+          var fieldEl = createField(comp.id, comp.fields[fi], 1);
+          if (fieldEl) details.appendChild(fieldEl);
+        }
+      }
+      configForm.appendChild(details);
+    }
     for (var ci = 0; ci < components.length; ci++) {
       var comp = components[ci];
       var details = document.createElement('details');
@@ -622,7 +647,7 @@
       details.appendChild(summary);
       if (comp.fields) {
         for (var fi = 0; fi < comp.fields.length; fi++) {
-          var fieldEl = createField(comp.id, comp.fields[fi]);
+          var fieldEl = createField(comp.id, comp.fields[fi], 0);
           if (fieldEl) details.appendChild(fieldEl);
         }
       }
@@ -727,7 +752,7 @@
    * @param {Object} field - { key, type, label, opts }
    * @returns {HTMLElement|null}
    */
-  function createField(namePrefix, field) {
+  function createField(namePrefix, field, isStatus) {
     if (!field || typeof field !== 'object' || !field.key) return null;
     var key = field.key;
     var type = field.type;
@@ -743,6 +768,7 @@
       input.name = input.id = namePrefix + '.' + key;
       if (opts.value) input.checked = true;
       applyAttrs(input, opts.attrs);
+      if (isStatus) input.disabled = true;
       var label = document.createElement('label');
       label.setAttribute('for', input.id);
       label.textContent = ' ' + labelText + (required ? '*' : '');
@@ -770,6 +796,7 @@
           if (opts.value !== undefined && String(opt[0]) === String(opts.value)) {
             radio.checked = true;
           }
+          if (isStatus) radio.disabled = true;
           var radioLabel = document.createElement('label');
           radioLabel.setAttribute('for', radioId);
           radioLabel.textContent = ' ' + opt[1];
@@ -794,12 +821,14 @@
       input.name = input.id = namePrefix + '.' + key;
       if (opts.value !== undefined) input.value = opts.value;
       applyAttrs(input, opts.attrs);
+      if (isStatus) input.disabled = true;
     } else if (type === 'range') {
       input = document.createElement('input');
       input.type = 'range';
       input.name = input.id = namePrefix + '.' + key;
       if (opts.value !== undefined) input.value = opts.value;
       applyAttrs(input, opts.attrs);
+      if (isStatus) input.disabled = true;
       var valueDisplay = document.createElement('output');
       valueDisplay.textContent = input.value;
       valueDisplay.style.marginLeft = '0.5em';
@@ -823,11 +852,13 @@
         }
       }
       applyAttrs(input, opts.attrs);
+      if (isStatus) input.disabled = true;
     } else if (type === 'textarea') {
       input = document.createElement('textarea');
       input.name = input.id = namePrefix + '.' + key;
       if (opts.value !== undefined) input.value = opts.value;
       applyAttrs(input, opts.attrs);
+      if (isStatus) input.disabled = true;
     } else {
       return null;
     }
