@@ -1,0 +1,240 @@
+# Backlog Triage — 2026-06-23
+
+## Project Goal
+
+A reusable configuration UI library for ESP32 (and potentially Arduino/ESP8266)
+devices. Developers define their settings as JSON, include the JS/CSS/HTML, and
+implement a small set of HTTP+WebSocket endpoints. The goal is to define a clean
+cutting line: what this library provides vs what the developer's project provides.
+
+---
+
+## High Priority
+
+### 1. Fix form validation
+
+**Status:** Bug — required fields don't show `:invalid` styling (red borders)
+after the WS + blur refactor.
+
+**Likely cause:** `bindChangeListeners` calls `el.checkValidity()` but never
+calls `el.reportValidity()`. Pico CSS relies on native `:invalid` pseudo-class,
+which may not trigger from `checkValidity()` alone on every browser. The
+original validation spec called for `reportValidity()` on blur but the
+implementation only checks validity and gates buttons — it never reports
+invalidity to the user or the CSS engine.
+
+**Fix:** Add `el.reportValidity()` call in the blur/change handler.
+
+### 2. ESP32 backend implementation
+
+**Goal:** A reusable C/C++ library (ESP-IDF component) that implements the API
+contract the Python test server currently provides.
+
+**Scope:** More than matching the test server, less than a full turnkey firmware
+image. The library should:
+
+- Serve the static files (HTML, JS, CSS) from SPIFFS/LittleFS
+- Implement the unified `/api/settings` JSON structure
+- Handle WebSocket connection per the existing protocol (`action: "apply"`,
+  `type: "settings"`, `type: "status"`)
+- Track `_dirty` (NVS vs applied values), push on connect
+- Handle `/api/settings/save` (persist to NVS)
+- Support status variables (read-only fields pushed over WS)
+- Provide clear hooks/callbacks for the developer's project to register
+  settings and status components
+
+**Out of scope (for now):**
+- Reboot and firmware upload endpoints (see separate items)
+- Auth
+- mDNS
+- Any project-specific business logic
+
+**Cutting line:** The library handles the config UI plumbing (serve files,
+serialize/deserialize settings, NVS persistence, WS lifecycle). The developer
+supplies the component JSON definitions, status variable callbacks, and any
+custom API endpoints beyond settings.
+
+---
+
+## Medium Priority
+
+### 3. Edge cases — concurrent updates
+
+**What:** Review and harden the state machine for edge cases not well covered:
+
+- Rapid blur events (user tabs quickly through fields)
+- WS disconnect during in-flight apply
+- Multiple browser tabs connected to same device
+- Fields with falsey values (0, false, "") — string coercion edge cases
+- Status push arriving while conflict prompt is visible
+- Server sends partial update (not all components)
+- Save-and-apply with empty diff (only dirty flag set)
+
+### 4. Navbar image + favicon
+
+**What:** Support a logo image in the nav header and a favicon, both served as
+static files from SPIFFS.
+
+**Design:** By convention, if `/logo.png` and `/favicon.ico` exist on SPIFFS,
+`index.html` includes them. No upload UI needed — developer places files at
+build time.
+
+**Changes:**
+- `index.html`: add `<link rel="icon">` and `<img>` in header, gated by a
+  simple existence check (or always present with `onerror` fallback)
+- Max 2-3 lines of HTML
+
+### 5. Group name labels
+
+**What:** Optional `"label"` field in component JSON to override the
+auto-derived label from `camelCase`/`snake_case` parsing.
+
+**Current behavior:** `labelFromKey("wifi_ssid")` → `"Wifi Ssid"`.
+`labelFromKey("AudioInterface")` → `"Audio Interface"`.
+
+**New behavior:** If a component provides `"label": "Wi-Fi Configuration"`,
+use that directly. Otherwise fall back to `labelFromKey(key)`.
+
+**JSON shape change:**
+```json
+{
+  "wifi": {
+    "_label": "Wi-Fi Configuration",
+    "ssid": ["text", "SSID", {"value": "MyNetwork"}]
+  }
+}
+```
+
+Meta key `_label` fits the existing `_`-prefix convention for metadata.
+
+**Changes:** 2-3 lines in `processSettings`.
+
+### 6. Reset to saved state
+
+**What:** A "Reset" button that tells the server to reload NVS settings into
+applied values, then pushes the result to the client over WS.
+
+**Flow:**
+1. User clicks "Reset" → POST `/api/settings/reset`
+2. Server loads NVS → applied values (discarding any live-only changes)
+3. Server pushes full settings + `_dirty=false` over WS
+4. Client receives like a normal settings push — form updates, baseline resets
+
+**Note:** The test server already has `/api/settings/reset` for e2e tests.
+This would make it a real feature.
+
+**Changes:**
+- Client: add Reset button in footer, POST handler
+- ESP32 backend: implement the reset endpoint (reload NVS → AV)
+- Test server: already exists
+
+---
+
+## Lower Priority
+
+### 7. Reboot server
+
+**What:** A "Reboot" button that POSTs to `/api/system/reboot`.
+
+**Flow:** Click → confirm dialog → POST → show "Rebooting..." with countdown →
+WS will naturally disconnect → show "Connection lost, retrying..." → reconnect
+automatically when device comes back.
+
+**ESP32 side:** `esp_restart()` call on endpoint hit.
+
+### 8. Firmware upload
+
+**What:** An OTA firmware update page.
+
+**Minimal version:** File input + "Upload" button → POST multipart to
+`/api/firmware/upload` → shows success/error message.
+
+**Nice-to-have:** Progress bar via XMLHttpRequest `upload.onprogress` event
+(works without WS). ESP32 must support chunked OTA updates for this.
+
+**ESP32 side:** ESP-IDF OTA API (`esp_ota_begin`, `esp_ota_write`,
+`esp_ota_end`).
+
+### 9. Export/import settings
+
+**What:** Download current settings as a JSON file, upload a JSON file to
+restore them.
+
+**Flow:** "Export" button → browser download of `/api/settings` response.
+"Import" button → file picker → POST JSON to `/api/settings/import` (or reuse
+`/api/settings/save`).
+
+### 10. Basic auth
+
+**What:** Optional HTTP Basic Auth gate on the settings endpoints.
+
+**Out of scope for library:** This belongs at the developer's project level
+(ESP-IDF middleware/handler wrapper). The library should not own auth, but
+should document how to add it.
+
+### 11. Spec/plan doc tidy
+
+**What:** The `docs/superpowers/` directory has grown to 15 plans + 8 specs.
+Plans are implementation artifacts (all in git history), and several specs
+overlap or are fully superseded.
+
+**Merge plan for specs:**
+
+| File | Action |
+|---|---|
+| `2026-06-15-esp32-config-ui-design.md` | **Delete** — superseded by unified-settings-design |
+| `2026-06-15-footer-actions-design.md` | **Delete** — superseded by unified-settings-design |
+| `2026-06-16-form-validation-design.md` | **Merge** into unified-settings-design (adds blur/reportValidity details) |
+| `2026-06-18-unified-settings-design.md` | **Keep** — master architecture spec |
+| `2026-06-23-remove-checkbox-type.md` | **Keep** — standalone surgical record |
+| `2026-06-23-status-variables-design.md` | **Keep** — merge status-variables-improvements into it |
+| `2026-06-23-status-variables-improvements.md` | **Delete** — merged into status-variables-design |
+| `2026-06-23-backlog-triage.md` | **Keep** — this document |
+
+**Plans:** Delete all 12 files in `plans/` + 2 ref files. Git history preserves them.
+
+**Result:** 8 specs → 4 specs, 14 plans → 0 plans.
+
+### 12. GitHub representation + integration docs
+
+**What:** A polished README with:
+- Screenshot of the UI
+- Quick-start guide (3 steps: add JSON files, include HTML/JS/CSS, implement 3
+  endpoints)
+- Full API reference (JSON format, WS protocol, HTTP endpoints)
+- ESP32 integration example (ESP-IDF component setup)
+- Link to a demo/test project
+
+---
+
+## Dependency Chain
+
+```
+Validation fix ──┐
+                 ├──> ESP32 backend ──> (base for all ESP32-side items)
+Edge cases ──────┘
+
+Group name labels ──> (trivial, can be done anytime)
+Nav image/favicon ──> (trivial, can be done anytime)
+Reset button ───────> (needs ESP32 backend for NVS reload)
+Doc tidy ───────────> (can be done anytime)
+
+Reboot ────────────> (needs ESP32 backend + reset endpoint pattern)
+Firmware upload ───> (needs ESP32 backend, most complex)
+Export/import ─────> (needs nothing, pure client + save endpoint)
+GitHub/docs ───────> (can be done anytime, best after features stabilize)
+```
+
+## Recommended Order
+
+1. Doc tidy (clean slate, makes everything easier to find)
+2. Validation fix (quick bug fix, unblocks nothing but annoying)
+3. Group name labels (trivial, 5-minute change)
+4. Nav image/favicon (trivial, 5-minute change)
+5. Edge cases audit (important before backend, could catch JS protocol issues)
+6. ESP32 backend (biggest item, enables everything else)
+7. Reset button (needs backend)
+8. Reboot (needs backend)
+9. Firmware upload (needs backend, most complex)
+10. Export/import (can be done independently)
+11. GitHub/docs (last, to reflect final state)
