@@ -254,6 +254,54 @@ describe('createField', () => {
     expect(window.createField('x', null)).toBeNull()
     expect(window.createField('x', {})).toBeNull()
   })
+
+  it('shows asterisk on label when required in attrs', () => {
+    var field = window.createField('wifi', {
+      key: 'ssid', type: 'text', label: 'SSID',
+      opts: { attrs: { required: true } },
+    })
+    expect(field.querySelector('label').textContent).toContain('*')
+  })
+
+  it('does not show asterisk when required is not set', () => {
+    var field = window.createField('wifi', {
+      key: 'ssid', type: 'text', label: 'SSID',
+      opts: { attrs: { maxlength: '32' } },
+    })
+    expect(field.querySelector('label').textContent).not.toContain('*')
+  })
+
+  it('sets HTML required attribute on input', () => {
+    var field = window.createField('wifi', {
+      key: 'ssid', type: 'text', label: 'SSID',
+      opts: { attrs: { required: true } },
+    })
+    expect(field.querySelector('input').getAttribute('required')).not.toBeNull()
+  })
+
+  it('shows asterisk on switch label when required', () => {
+    var field = window.createField('wifi', {
+      key: 'hidden', type: 'switch', label: 'Hidden',
+      opts: { attrs: { required: true } },
+    })
+    expect(field.querySelector('label').textContent).toContain('*')
+  })
+
+  it('shows asterisk on radio legend when required', () => {
+    var field = window.createField('gpio', {
+      key: 'pull', type: 'radio', label: 'Pull',
+      opts: { options: [['none', 'None']], attrs: { required: true } },
+    })
+    expect(field.querySelector('legend').textContent).toContain('*')
+  })
+
+  it('shows asterisk on select label when required', () => {
+    var field = window.createField('wifi', {
+      key: 'mode', type: 'select', label: 'Mode',
+      opts: { options: [['a', 'A']], attrs: { required: true } },
+    })
+    expect(field.querySelector('label').textContent).toContain('*')
+  })
 })
 
 describe('addHelperText', function () {

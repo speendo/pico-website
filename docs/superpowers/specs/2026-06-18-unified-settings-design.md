@@ -60,7 +60,7 @@ Each key under a component group is a 3-element array:
 - `opts` — dictionary with keys:
   - `value` — current applied value (replaces `default` from old format)
   - `options` — for `select` and `radio`: `[["key1", "Label 1"], ...]`
-  - `attrs` — HTML attributes: `{min, max, maxlength, step, placeholder}`
+  - `attrs` — HTML attributes: `{min, max, maxlength, step, placeholder, required}`
   - `tooltip` — help text string
 
 ### Meta fields

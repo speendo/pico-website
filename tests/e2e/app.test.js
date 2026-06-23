@@ -41,6 +41,30 @@ test.describe('Form rendering', () => {
     await page.goto('/')
     await expect(page.locator('#config-form')).not.toHaveAttribute('aria-busy', 'true')
   })
+
+  test('wifi.ssid has required attribute', async ({ page }) => {
+    await page.goto('/')
+    await page.locator('details#wifi summary').click()
+    await expect(page.locator('[name="wifi.ssid"]')).toHaveAttribute('required', 'true')
+  })
+
+  test('wifi.password has required attribute', async ({ page }) => {
+    await page.goto('/')
+    await page.locator('details#wifi summary').click()
+    await expect(page.locator('[name="wifi.password"]')).toHaveAttribute('required', 'true')
+  })
+
+  test('gpio.pin does not have required attribute', async ({ page }) => {
+    await page.goto('/')
+    await expect(page.locator('[name="gpio.pin"]')).not.toHaveAttribute('required')
+  })
+
+  test('required fields show asterisk in label', async ({ page }) => {
+    await page.goto('/')
+    await page.locator('details#wifi summary').click()
+    var label = page.locator('label[for="wifi.ssid"]')
+    await expect(label).toContainText('*')
+  })
 })
 
 test.describe('Save & Apply button', () => {
@@ -48,7 +72,8 @@ test.describe('Save & Apply button', () => {
     await page.goto('/')
     await page.locator('details#wifi summary').click()
     await page.locator('[name="wifi.ssid"]').fill('DirtyTest')
-    await page.locator('[name="wifi.password"]').focus()
+    await page.locator('[name="wifi.password"]').fill('secret')
+    await page.locator('[name="wifi.ssid"]').focus()
     await page.waitForTimeout(500)
     await expect(page.locator('#btn-save-apply')).toBeEnabled()
     await expect(page.locator('#btn-save-apply')).not.toBeHidden()
@@ -58,7 +83,8 @@ test.describe('Save & Apply button', () => {
     await page.goto('/')
     await page.locator('details#wifi summary').click()
     await page.locator('[name="wifi.ssid"]').fill('SaveTest')
-    await page.locator('[name="wifi.password"]').focus()
+    await page.locator('[name="wifi.password"]').fill('secret')
+    await page.locator('[name="wifi.ssid"]').focus()
     await page.waitForTimeout(500)
     await expect(page.locator('#btn-save-apply')).toBeEnabled()
     await page.locator('#btn-save-apply').click()
@@ -68,24 +94,38 @@ test.describe('Save & Apply button', () => {
   })
 
   test('Save stays visible after multiple radio changes', async ({ page }) => {
-    await page.goto('/#gpio')
+    await page.goto('/')
     await page.waitForTimeout(500)
-    await expect(page.locator('#btn-save-apply')).toBeHidden()
+    // Fill required wifi fields so the form stays valid
+    await page.locator('details#wifi summary').click()
+    await page.locator('[name="wifi.ssid"]').fill('MyNet')
+    await page.keyboard.press('Tab')
+    await page.keyboard.type('secret')
+    await page.keyboard.press('Tab')
+    // Wait for WS echoes: button becomes visible when dirty=true and form valid
+    await expect(page.locator('#btn-save-apply')).toBeVisible({ timeout: 10000 })
+    await page.locator('details#gpio summary').click()
     await page.locator('#gpio\\.pull\\.up').check()
-    await page.waitForTimeout(500)
-    await expect(page.locator('#btn-save-apply')).toBeVisible()
+    await expect(page.locator('#btn-save-apply')).toBeVisible({ timeout: 5000 })
     await page.locator('#gpio\\.pull\\.down').check()
-    await page.waitForTimeout(500)
-    await expect(page.locator('#btn-save-apply')).toBeVisible()
+    await expect(page.locator('#btn-save-apply')).toBeVisible({ timeout: 5000 })
   })
 
   test('Save appears after toggling switch', async ({ page }) => {
-    await page.goto('/#gpio')
+    await page.goto('/')
     await page.waitForTimeout(500)
+    // Fill required wifi fields so the form stays valid
+    await page.locator('details#wifi summary').click()
+    await page.locator('[name="wifi.ssid"]').fill('MyNet')
+    await page.keyboard.press('Tab')
+    await page.keyboard.type('secret')
+    await page.keyboard.press('Tab')
+    // Wait for WS echoes: button becomes visible when dirty=true and form valid
+    await expect(page.locator('#btn-save-apply')).toBeVisible({ timeout: 10000 })
+    await page.locator('details#gpio summary').click()
     await expect(page.locator('[name="gpio.enabled"]')).toBeChecked()
     await page.locator('[name="gpio.enabled"]').uncheck()
-    await page.waitForTimeout(500)
-    await expect(page.locator('#btn-save-apply')).toBeVisible()
+    await expect(page.locator('#btn-save-apply')).toBeVisible({ timeout: 5000 })
   })
 })
 
