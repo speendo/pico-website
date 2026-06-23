@@ -2,8 +2,8 @@
 
 ## Motivation
 
-ESP32 devices expose read-only telemetry (heap free, uptime, firmware version,
-signal strength, sensor readings) that users need to see but should never edit.
+ESP32 devices expose read-only telemetry (uptime, firmware version, LED state,
+network mode, signal strength, sensor readings) that users need to see but should never edit.
 These "status variables" co-exist with editable settings in the UI but are
 sourced from a separate data path and rendered as disabled inputs.
 
@@ -44,15 +44,17 @@ as the discriminator.
   "type": "status",
   "data": {
     "system": {
-      "heap_free":  ["text",  "Free Heap",   {"value": "123456"}],
-      "uptime":     ["text",  "Uptime",      {"value": "12d 4h 32m"}],
-      "fw_version": ["text",  "Firmware",    {"value": "2.1.0"}],
-      "mac":        ["text",  "MAC Address", {"value": "a4:cf:12:34:56:78"}],
-      "wifi_rssi":  ["range", "Signal",      {"attrs": {"min": -100, "max": 0, "step": 1}, "value": -45}]
+      "uptime":     ["text",   "Uptime",    {"value": "1d 2h 30m 15s"}],
+      "fw_version": ["select", "Firmware",  {"options": [["2.0.0","2.0.0"],["2.1.0","2.1.0"],["2.2.0-beta","2.2.0-beta"]], "value": "2.1.0"}],
+      "led":        ["switch", "LED",       {"value": true, "tooltip": "System LED indicator"}]
+    },
+    "network": {
+      "mode":       ["radio",  "Mode",      {"options": [["auto","Auto"],["manual","Manual"],["safe","Safe"]], "value": "auto", "tooltip": "Network operation mode"}],
+      "signal":     ["range",  "Signal",    {"attrs": {"min": 0, "max": 100, "step": 1}, "value": "75", "tooltip": "Signal strength %"}],
+      "connection": ["select", "Connection",{"options": [["connected","Connected"],["disconnected","Disconnected"],["error","Error"]], "value": "connected"}]
     },
     "sensors": {
-      "temperature": ["number", "Temperature", {"value": 23.5}],
-      "humidity":    ["number", "Humidity",    {"value": 48.2}]
+      "temperature": ["number", "Temperature", {"value": "23.5", "tooltip": "Celsius"}]
     }
   }
 }
@@ -70,7 +72,7 @@ pushes may contain only changed fields (partial).
 ### Partial update example
 
 ```json
-{"type": "status", "data": {"system": {"heap_free": ["text", "Free Heap", {"value": "123400"}]}}}
+{"type": "status", "data": {"network": {"signal": ["range", "Signal", {"value": "80"}]}}}
 ```
 
 Client walks the `data` tree, finds the matching component + field, updates
@@ -138,14 +140,17 @@ these iterate `statusComponents`, so they are unchanged.
 ```python
 STATUS = {
     "system": {
-        "heap_free":  ["text", "Free Heap",  {"value": "123456", "tooltip": "Available heap in bytes"}],
-        "uptime":     ["text", "Uptime",     {"value": "12d 4h 32m"}],
-        "fw_version": ["text", "Firmware",   {"value": "2.1.0"}],
-        "mac":        ["text", "MAC Address", {"value": "a4:cf:12:34:56:78"}],
+        "uptime":     ["text", "Uptime",     {"value": None}],
+        "fw_version": ["select", "Firmware", {"options": [["2.0.0","2.0.0"],["2.1.0","2.1.0"],["2.2.0-beta","2.2.0-beta"]], "value": "2.1.0"}],
+        "led":        ["switch", "LED",      {"value": True, "tooltip": "System LED indicator"}],
+    },
+    "network": {
+        "mode":       ["radio", "Mode",      {"options": [["auto","Auto"],["manual","Manual"],["safe","Safe"]], "value": "auto", "tooltip": "Network operation mode"}],
+        "signal":     ["range", "Signal",    {"attrs": {"min": 0, "max": 100, "step": 1}, "value": None, "tooltip": "Signal strength %"}],
+        "connection": ["select", "Connection",{"options": [["connected","Connected"],["disconnected","Disconnected"],["error","Error"]], "value": "connected"}],
     },
     "sensors": {
-        "temperature": ["number", "Temperature", {"value": "23.5"}],
-        "humidity":    ["number", "Humidity",    {"value": "48.2"}],
+        "temperature": ["number", "Temperature", {"value": None, "tooltip": "Celsius"}],
     },
 }
 ```
@@ -153,14 +158,17 @@ STATUS = {
 ### `build_status()`
 
 Mirrors `build_settings()` — iterates `STATUS`, resolves values from
-`status_store` dict for static fields. Computed fields (uptime, heap)
-generate live values at call time:
+`status_store` dict for static fields. Computed fields (uptime, signal,
+temperature) generate live values at call time:
 
-- **uptime:** compute from `start_time` module-level timestamp.
-- **heap_free:** simulate fluctuation by taking a base value and
-  subtracting elapsed seconds modulo an offset.
+- **uptime:** compute from `start_time` module-level timestamp (includes seconds).
+- **signal:** simulate fluctuation: `str(50 + int(elapsed * 5) % 50)`.
+- **temperature:** simulate drift: `str(round(23.5 + (int(elapsed) % 10) * 0.1, 1))`.
 - Other fields in `STATUS` with a `None` value marker are treated as
   computed at call time rather than looked up from `status_store`.
+
+A background asyncio task (`status_broadcaster`) calls `build_status()` every
+3 seconds and pushes the result to all connected WebSocket clients.
 
 ### `status_store`
 
