@@ -153,7 +153,14 @@ STATUS = {
 ### `build_status()`
 
 Mirrors `build_settings()` — iterates `STATUS`, resolves values from
-`status_store` dict.
+`status_store` dict for static fields. Computed fields (uptime, heap)
+generate live values at call time:
+
+- **uptime:** compute from `start_time` module-level timestamp.
+- **heap_free:** simulate fluctuation by taking a base value and
+  subtracting elapsed seconds modulo an offset.
+- Other fields in `STATUS` with a `None` value marker are treated as
+  computed at call time rather than looked up from `status_store`.
 
 ### `status_store`
 
