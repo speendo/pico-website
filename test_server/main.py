@@ -23,6 +23,7 @@ SETTINGS = {
         "direction": ["select", "Direction", {"options": [["input", "Input"], ["output", "Output"]], "value": "output", "tooltip": "Pin direction"}],
         "pull": ["radio", "Pull Resistor", {"options": [["none", "None"], ["up", "Pull Up"], ["down", "Pull Down"]], "value": "none", "tooltip": "Internal pull resistor"}],
         "enabled": ["checkbox", "GPIO Enabled", {"value": True, "tooltip": "Enable this GPIO pin"}],
+        "inverted": ["checkbox", "Inverted", {"value": False, "tooltip": "Invert GPIO signal level"}],
         "initial": ["select", "Initial State", {"options": [["low", "Low"], ["high", "High"]], "value": "low", "tooltip": "Initial output state"}],
     },
 }

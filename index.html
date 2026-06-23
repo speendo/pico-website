@@ -31,6 +31,12 @@
       footer:not(:has(button:not([hidden]))):has(#status-bar:empty) {
         display: none;
       }
+      #config-form div:has(> [type="checkbox"]) > small {
+        display: block;
+        width: 100%;
+        margin-bottom: var(--pico-spacing);
+        color: var(--pico-muted-color);
+      }
     </style>
 </head>
 <body>
