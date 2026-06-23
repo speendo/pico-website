@@ -397,80 +397,6 @@ describe('postJSON', () => {
   })
 })
 
-describe('loadSettings', () => {
-  beforeEach(() => {
-    window.__test.components = []
-    document.getElementById('status-bar').textContent = ''
-  })
-
-  it('loads settings and builds components on success', async () => {
-    window.fetch = function () {
-      return Promise.resolve({
-        ok: true,
-        json: function () { return Promise.resolve({
-          _dirty: false,
-          wifi: {
-            ssid: ['text', 'SSID', { value: '', tooltip: 'WiFi network name' }],
-          },
-        })},
-      })
-    }
-    var result = await window.loadSettings()
-    expect(result).toBe(true)
-    expect(window.__test.components.length).toBe(1)
-    expect(window.__test.components[0].id).toBe('wifi')
-    expect(window.__test.components[0].label).toBe('Wifi')
-    expect(window.__test.components[0].fields.length).toBe(1)
-    expect(window.__test.components[0].fields[0].key).toBe('ssid')
-    expect(window.__test.components[0].fields[0].type).toBe('text')
-    expect(window.__test.components[0].fields[0].label).toBe('SSID')
-    expect(window.__test.components[0].fields[0].opts.value).toBe('')
-  })
-
-  it('shows error on 404', async () => {
-    window.fetch = function () { return Promise.resolve({ ok: false, status: 404 }) }
-    var result = await window.loadSettings()
-    expect(result).toBe(false)
-    expect(document.getElementById('status-bar').textContent).toContain('Failed to load settings')
-  })
-
-  it('shows error on network failure', async () => {
-    window.fetch = function () { return Promise.reject(new Error('Network error')) }
-    var result = await window.loadSettings()
-    expect(result).toBe(false)
-    expect(document.getElementById('status-bar').textContent).toContain('Failed to load settings')
-  })
-
-  it('captures _dirty flag from response', async () => {
-    window.__test.dirty = null
-    window.fetch = function () {
-      return Promise.resolve({
-        ok: true,
-        json: function () { return Promise.resolve({
-          _dirty: true,
-          wifi: { ssid: ['text', 'SSID', { value: '' }] },
-        })},
-      })
-    }
-    await window.loadSettings()
-    expect(window.__test.dirty).toBe(true)
-  })
-
-  it('captures _dirty as false when not dirty', async () => {
-    window.__test.dirty = null
-    window.fetch = function () {
-      return Promise.resolve({
-        ok: true,
-        json: function () { return Promise.resolve({
-          _dirty: false,
-          wifi: { ssid: ['text', 'SSID', { value: '' }] },
-        })},
-      })
-    }
-    await window.loadSettings()
-    expect(window.__test.dirty).toBe(false)
-  })
-})
 
 describe('renderNav', () => {
   beforeEach(() => {
@@ -552,44 +478,6 @@ describe('wireButtons / bindChangeListeners', () => {
     window.bindChangeListeners()
     document.querySelector('[name="wifi.ssid"]').value = 'changed'
     document.querySelector('[name="wifi.ssid"]').dispatchEvent(new Event('change', { bubbles: true }))
-  })
-})
-
-describe('refreshComponents', () => {
-  beforeEach(() => {
-    window.__test.components = [{ id: 'wifi', label: 'Wifi' }]
-    document.getElementById('status-bar').textContent = ''
-  })
-
-  it('fetches /api/settings and updates fields', async () => {
-    window.fetch = function () {
-      return Promise.resolve({ ok: true, json: function () { return Promise.resolve({ _dirty: false, wifi: { ssid: ['text', 'SSID', { value: 'test' }] } }) } })
-    }
-    await window.refreshComponents()
-    expect(window.__test.components[0].fields).toBeDefined()
-    expect(window.__test.components[0].fields.length).toBe(1)
-    expect(window.__test.components[0].fields[0].key).toBe('ssid')
-  })
-
-  it('shows error on fetch failure', async () => {
-    window.fetch = function () { return Promise.resolve({ ok: false, status: 404 }) }
-    await window.refreshComponents()
-    expect(document.getElementById('status-bar').textContent).toContain('Failed to refresh')
-  })
-
-  it('captures _dirty flag from refresh response', async () => {
-    window.__test.dirty = null
-    window.fetch = function () {
-      return Promise.resolve({
-        ok: true,
-        json: function () { return Promise.resolve({
-          _dirty: true,
-          wifi: { ssid: ['text', 'SSID', { value: 'test' }] },
-        })},
-      })
-    }
-    await window.refreshComponents()
-    expect(window.__test.dirty).toBe(true)
   })
 })
 

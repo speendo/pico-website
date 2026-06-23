@@ -81,31 +81,6 @@
     }
   }
 
-  async function refreshComponents() {
-    try {
-      var res = await fetch('/api/settings');
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      var data = await res.json();
-      dirty = data._dirty === true;
-      for (var ci = 0; ci < components.length; ci++) {
-        var comp = components[ci];
-        var group = data[comp.id];
-        if (!group) {
-          comp.fields = [];
-          continue;
-        }
-        comp.fields = [];
-        for (var fkey in group) {
-          var field = group[fkey];
-          comp.fields.push({ key: fkey, type: field[0], label: field[1], opts: field[2] });
-        }
-      }
-      clearError();
-    } catch (err) {
-      showError('Failed to refresh settings: ' + err.message);
-    }
-  }
-
   function updateUI() {
     var formOk = configForm.checkValidity();
     var showBtn = dirty && formOk;
@@ -459,32 +434,6 @@
       .replace(/\b\w/g, function (c) { return c.toUpperCase(); });
   }
 
-  async function loadSettings() {
-    try {
-      var res = await fetch('/api/settings');
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      var data = await res.json();
-      dirty = data._dirty === true;
-      var comps = [];
-      for (var key in data) {
-        if (key[0] === '_') continue;
-        var comp = { id: key, label: labelFromKey(key), fields: [] };
-        var group = data[key];
-        for (var fkey in group) {
-          var field = group[fkey];
-          comp.fields.push({ key: fkey, type: field[0], label: field[1], opts: field[2] });
-        }
-        comps.push(comp);
-      }
-      components = comps;
-      clearError();
-      return true;
-    } catch (err) {
-      showError('Failed to load settings: ' + err.message);
-      return false;
-    }
-  }
-
   function renderNav() {
     navList.innerHTML = '';
     for (var ci = 0; ci < components.length; ci++) {
@@ -739,5 +688,5 @@
     if (describedEl) describedEl.setAttribute('aria-describedby', helper.id);
     container.appendChild(helper);
   }
-  /* test-expose */if(window.__TEST_MODE){window.serialize=serialize;window.setBaseline=setBaseline;window.getPending=getPending;window.createField=createField;window.populateFromComponents=populateFromComponents;window.applyAttrs=applyAttrs;window.addHelperText=addHelperText;window.findField=findField;window.updateUI=updateUI;window.showError=showError;window.clearError=clearError;window.postJSON=postJSON;window.loadSettings=loadSettings;window.refreshComponents=refreshComponents;window.syncThen=syncThen;window.handleSaveApply=handleSaveApply;window.renderNav=renderNav;window.renderForm=renderForm;window.handleHash=handleHash;window.wireButtons=wireButtons;window.bindChangeListeners=bindChangeListeners;window.init=init;window.buildPatch=buildPatch;window.connectWS=connectWS;window.disconnectWS=disconnectWS;window.onWSClose=onWSClose;window.processSettings=processSettings;window.onWSMessage=onWSMessage;window.updateAV=updateAV;window.applyAV=applyAV;window.syncLS=syncLS;window.resolveNested=resolveNested;window.sendToServer=sendToServer;window.onUserInput=onUserInput;window.readFormValue=readFormValue;window.showExternalNotification=showExternalNotification;window.showConflictPrompt=showConflictPrompt;window.hideNotification=hideNotification;window.__test={};window.__test.receiveWSMessage=onWSMessage;window.__test.wsReady=function(){if(ws)ws.readyState=1};Object.defineProperty(window.__test,'components',{get:function(){return components},set:function(v){components=v}});Object.defineProperty(window.__test,'dirty',{get:function(){return dirty},set:function(v){dirty=v}});Object.defineProperty(window.__test,'lastSent',{get:function(){return lastSent},set:function(v){lastSent=v}});Object.defineProperty(window.__test,'inFlight',{get:function(){return inFlight},set:function(v){inFlight=v}});}
+  /* test-expose */if(window.__TEST_MODE){window.serialize=serialize;window.setBaseline=setBaseline;window.getPending=getPending;window.createField=createField;window.populateFromComponents=populateFromComponents;window.applyAttrs=applyAttrs;window.addHelperText=addHelperText;window.findField=findField;window.updateUI=updateUI;window.showError=showError;window.clearError=clearError;window.postJSON=postJSON;window.updateUI=updateUI;window.showError=showError;window.clearError=clearError;window.postJSON=postJSON;window.syncThen=syncThen;window.handleSaveApply=handleSaveApply;window.renderNav=renderNav;window.renderForm=renderForm;window.handleHash=handleHash;window.wireButtons=wireButtons;window.bindChangeListeners=bindChangeListeners;window.init=init;window.buildPatch=buildPatch;window.connectWS=connectWS;window.disconnectWS=disconnectWS;window.onWSClose=onWSClose;window.processSettings=processSettings;window.onWSMessage=onWSMessage;window.updateAV=updateAV;window.applyAV=applyAV;window.syncLS=syncLS;window.resolveNested=resolveNested;window.sendToServer=sendToServer;window.onUserInput=onUserInput;window.readFormValue=readFormValue;window.showExternalNotification=showExternalNotification;window.showConflictPrompt=showConflictPrompt;window.hideNotification=hideNotification;window.__test={};window.__test.receiveWSMessage=onWSMessage;window.__test.wsReady=function(){if(ws)ws.readyState=1};Object.defineProperty(window.__test,'components',{get:function(){return components},set:function(v){components=v}});Object.defineProperty(window.__test,'dirty',{get:function(){return dirty},set:function(v){dirty=v}});Object.defineProperty(window.__test,'lastSent',{get:function(){return lastSent},set:function(v){lastSent=v}});Object.defineProperty(window.__test,'inFlight',{get:function(){return inFlight},set:function(v){inFlight=v}});}
 })();
