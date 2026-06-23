@@ -1,3 +1,4 @@
+import asyncio
 import json
 import time
 from pathlib import Path
@@ -31,14 +32,17 @@ SETTINGS = {
 
 STATUS = {
     "system": {
-        "heap_free":  ["text", "Free Heap",  {"value": None, "tooltip": "Available heap in bytes"}],
         "uptime":     ["text", "Uptime",     {"value": None}],
-        "fw_version": ["text", "Firmware",   {"value": "2.1.0"}],
-        "mac":        ["text", "MAC Address", {"value": "a4:cf:12:34:56:78"}],
+        "fw_version": ["select", "Firmware", {"options": [["2.0.0","2.0.0"],["2.1.0","2.1.0"],["2.2.0-beta","2.2.0-beta"]], "value": "2.1.0"}],
+        "led":        ["switch", "LED",      {"value": True, "tooltip": "System LED indicator"}],
+    },
+    "network": {
+        "mode":       ["radio", "Mode",      {"options": [["auto","Auto"],["manual","Manual"],["safe","Safe"]], "value": "auto", "tooltip": "Network operation mode"}],
+        "signal":     ["range", "Signal",    {"attrs": {"min": 0, "max": 100, "step": 1}, "value": None, "tooltip": "Signal strength %"}],
+        "connection": ["select", "Connection",{"options": [["connected","Connected"],["disconnected","Disconnected"],["error","Error"]], "value": "connected"}],
     },
     "sensors": {
-        "temperature": ["number", "Temperature", {"value": "23.5", "tooltip": "Celsius"}],
-        "humidity":    ["number", "Humidity",    {"value": "48.2"}],
+        "temperature": ["number", "Temperature", {"value": None, "tooltip": "Celsius"}],
     },
 }
 
@@ -65,6 +69,7 @@ async def startup():
             if val is not None:
                 store_key = comp_id + "." + key
                 status_store[store_key] = val
+    asyncio.ensure_future(status_broadcaster())
 
 
 def build_settings():
@@ -88,8 +93,8 @@ def build_status():
     hours = int(elapsed // 3600)
     minutes = int((elapsed % 3600) // 60)
     days = hours // 24
-    uptime_str = f"{days}d {hours % 24}h {minutes}m"
-    heap_val = max(10000, 123456 - int(elapsed * 10) % 50000)
+    seconds = int(elapsed % 60)
+    uptime_str = f"{days}d {hours % 24}h {minutes % 60}m {seconds}s"
 
     result = {}
     for comp_id, fields in STATUS.items():
@@ -99,14 +104,27 @@ def build_status():
             opts = dict(fopts)
             if key == "uptime":
                 opts["value"] = uptime_str
-            elif key == "heap_free":
-                opts["value"] = str(heap_val)
+            elif key == "signal":
+                opts["value"] = str(50 + int(elapsed * 5) % 50)
+            elif key == "temperature":
+                opts["value"] = str(round(23.5 + (int(elapsed) % 10) * 0.1, 1))
             else:
                 store_key = comp_id + "." + key
                 opts["value"] = status_store.get(store_key, opts.get("value", ""))
             group[key] = [ftype, flabel, opts]
         result[comp_id] = group
     return result
+
+
+async def status_broadcaster():
+    while True:
+        await asyncio.sleep(3)
+        payload = build_status()
+        for client in list(connected):
+            try:
+                await client.send_json({"type": "status", "data": payload})
+            except Exception:
+                connected.discard(client)
 
 
 @app.get("/api/settings")
