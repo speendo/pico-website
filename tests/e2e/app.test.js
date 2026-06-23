@@ -79,7 +79,7 @@ test.describe('Save & Apply button', () => {
     await expect(page.locator('#btn-save-apply')).toBeVisible()
   })
 
-  test('Save appears after toggling checkbox', async ({ page }) => {
+  test('Save appears after toggling switch', async ({ page }) => {
     await page.goto('/#gpio')
     await page.waitForTimeout(500)
     await expect(page.locator('[name="gpio.enabled"]')).toBeChecked()
