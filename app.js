@@ -302,10 +302,8 @@
         var newAV = sField[2].value;
         var oldAV = field.opts.value;
         if (String(newAV) === String(oldAV)) continue;
-        var el = document.querySelector('[name="' + comp.id + '.' + field.key + '"]');
-        if (!el) continue;
-        var fv = (el.type === 'checkbox') ? el.checked :
-                 (el.type === 'number' || el.type === 'range') ? parseFloat(el.value) : el.value;
+        var fv = readFormValue([comp.id, field.key]);
+        if (fv === undefined) continue;
         changedFields[comp.id + '.' + field.key] = {newAV: newAV, oldAV: oldAV, fv: fv, label: field.label};
       }
     }
@@ -579,10 +577,8 @@
         var comp = components[ci];
         for (var fi = 0; fi < comp.fields.length; fi++) {
           var field = comp.fields[fi];
-          var el = document.querySelector('[name="' + comp.id + '.' + field.key + '"]');
-          if (!el) continue;
-          var fv = (el.type === 'checkbox') ? el.checked :
-                   (el.type === 'number' || el.type === 'range') ? parseFloat(el.value) : el.value;
+          var fv = readFormValue([comp.id, field.key]);
+          if (fv === undefined) continue;
           field.opts.value = fv;
         }
       }
