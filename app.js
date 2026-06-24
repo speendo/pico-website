@@ -350,14 +350,10 @@
         for (var qi = 0; qi < queuedKeys.length; qi++) {
           sendToServer(queuedKeys[qi].key, queuedKeys[qi].value);
         }
-        updateAV(data);
-        applyAV();
-        syncLS();
-        return;
       }
       updateAV(data);
-      applyAV();
-      syncLS();
+      setBaseline();
+      updateUI();
       return;
     }
 

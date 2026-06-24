@@ -1008,7 +1008,7 @@ describe('radio createField structure', () => {
   })
 })
 
-describe('echo path syncLS', () => {
+describe('echo path — single field match', () => {
   beforeEach(() => {
     document.querySelector('#config-form').innerHTML = '<input name="wifi.ssid" value="newVal" />'
     window.__test.components = [{
@@ -1019,7 +1019,7 @@ describe('echo path syncLS', () => {
     window.__test.lastSent['wifi.ssid'] = 'newVal'
   })
 
-  it('syncLS called after echo match updates lastSent', () => {
+  it('echo match path keeps lastSent and reflects dirty flag', () => {
     window.__test.receiveWSMessage({
       data: JSON.stringify({
         _dirty: true,
@@ -1027,6 +1027,84 @@ describe('echo path syncLS', () => {
       }),
     })
     expect(window.__test.lastSent['wifi.ssid']).toBe('newVal')
+    expect(window.__test.dirty).toBe(true)
+    expect(window.__test.components[0].fields[0].opts.value).toBe('newVal')
+  })
+})
+
+describe('echo path — partial match with multiple in-flight fields', () => {
+  beforeEach(() => {
+    document.querySelector('#config-form').innerHTML = [
+      '<input name="wifi.ssid" value="DirtyTest" />',
+      '<input name="wifi.password" value="secret" />',
+    ].join('')
+    window.__test.components = [{
+      id: 'wifi', fields: [
+        { key: 'ssid', type: 'text', label: 'SSID', opts: { value: '' } },
+        { key: 'password', type: 'password', label: 'Password', opts: { value: '' } },
+      ],
+    }]
+    window.__test.lastSent = {}
+    window.__test.inFlight = {}
+    window.__test.dirty = false
+    window.__test.lastSent['wifi.ssid'] = 'DirtyTest'
+    window.__test.inFlight['wifi.ssid'] = true
+    window.__test.lastSent['wifi.password'] = 'secret'
+    window.__test.inFlight['wifi.password'] = true
+  })
+
+  it('partial echo does not corrupt lastSent of other in-flight field', () => {
+    window.__test.receiveWSMessage({
+      data: JSON.stringify({
+        _dirty: true,
+        wifi: {
+          ssid: ['text', 'SSID', { value: 'DirtyTest' }],
+          password: ['password', 'Password', { value: '' }],
+        },
+      }),
+    })
+    expect(window.__test.inFlight['wifi.ssid']).toBe(false)
+    expect(window.__test.inFlight['wifi.password']).toBe(true)
+    expect(window.__test.lastSent['wifi.password']).toBe('secret')
+    expect(window.__test.dirty).toBe(true)
+  })
+
+  it('second echo resolves after partial echo match', () => {
+    window.__test.receiveWSMessage({
+      data: JSON.stringify({
+        _dirty: true,
+        wifi: {
+          ssid: ['text', 'SSID', { value: 'DirtyTest' }],
+          password: ['password', 'Password', { value: '' }],
+        },
+      }),
+    })
+    window.__test.receiveWSMessage({
+      data: JSON.stringify({
+        _dirty: true,
+        wifi: {
+          ssid: ['text', 'SSID', { value: 'DirtyTest' }],
+          password: ['password', 'Password', { value: 'secret' }],
+        },
+      }),
+    })
+    expect(window.__test.inFlight['wifi.password']).toBe(false)
+    expect(window.__test.lastSent['wifi.password']).toBe('secret')
+    expect(window.__test.dirty).toBe(true)
+  })
+
+  it('partial echo does not overwrite DOM for in-flight field', () => {
+    window.__test.receiveWSMessage({
+      data: JSON.stringify({
+        _dirty: true,
+        wifi: {
+          ssid: ['text', 'SSID', { value: 'DirtyTest' }],
+          password: ['password', 'Password', { value: '' }],
+        },
+      }),
+    })
+    expect(document.querySelector('[name="wifi.password"]').value).toBe('secret')
+    expect(document.querySelector('[name="wifi.ssid"]').value).toBe('DirtyTest')
   })
 })
 
