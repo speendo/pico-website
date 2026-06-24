@@ -677,7 +677,7 @@
       if (!key) continue;
       (function (el, key) {
         var handler = function () {
-          if (!el.checkValidity()) { updateUI(); return; }
+          if (!el.reportValidity()) { updateUI(); return; }
           var val = (el.type === 'checkbox') ? el.checked :
                     (el.type === 'number' || el.type === 'range') ? parseFloat(el.value) : el.value;
           onUserInput(key, val);
