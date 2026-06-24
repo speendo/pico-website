@@ -1356,3 +1356,142 @@ describe('status message routing', () => {
     expect(window.__test.dirty).toBe(true)
   })
 })
+
+describe('form validation', () => {
+  beforeEach(() => {
+    document.querySelector('#config-form').innerHTML = [
+      '<input name="mqtt.client_id" value="" required minlength="3" maxlength="64" pattern="^[a-zA-Z0-9_-]+$" />',
+      '<input name="mqtt.keepalive" value="60" type="number" min="1" max="65535" step="5" />',
+      '<input name="notifications.sender" value="" type="email" required />',
+    ].join('')
+    window.__test.components = [{ id: 'mqtt', fields: [
+      { key: 'client_id', type: 'text', label: 'Client ID', opts: {} },
+      { key: 'keepalive', type: 'number', label: 'Keepalive', opts: {} },
+    ]}, { id: 'notifications', fields: [
+      { key: 'sender', type: 'email', label: 'Sender', opts: {} },
+    ]}]
+    window.__test.dirty = false
+    window.setBaseline()
+  })
+
+  it('calls reportValidity on blur of an invalid field', () => {
+    var called = false
+    var input = document.querySelector('[name="mqtt.client_id"]')
+    var orig = input.reportValidity
+    input.reportValidity = function () { called = true; return false }
+    window.bindChangeListeners()
+    input.dispatchEvent(new Event('blur', { bubbles: true }))
+    expect(called).toBe(true)
+    input.reportValidity = orig
+  })
+
+  it('does not send WS when field is invalid on blur', () => {
+    window.__test.lastSent = {}
+    window.__test.inFlight = {}
+    window.connectWS()
+    window.__test.wsReady()
+    var sendCalled = false
+    var origSend = window.sendToServer
+    window.sendToServer = function () { sendCalled = true }
+    var input = document.querySelector('[name="mqtt.client_id"]')
+    var origReport = input.reportValidity
+    input.reportValidity = function () { return false }
+    window.bindChangeListeners()
+    input.dispatchEvent(new Event('blur', { bubbles: true }))
+    expect(sendCalled).toBe(false)
+    window.sendToServer = origSend
+    input.reportValidity = origReport
+  })
+
+  it('sends WS when field becomes valid on blur', () => {
+    window.__test.lastSent = {}
+    window.__test.inFlight = {}
+    window.__test.onWSSend = function (data) { window.__test.wsSent = JSON.parse(data) }
+    window.connectWS()
+    window.__test.wsReady()
+    var input = document.querySelector('[name="mqtt.client_id"]')
+    input.value = 'my-device'
+    var origReport = input.reportValidity
+    input.reportValidity = function () { return true }
+    window.bindChangeListeners()
+    input.dispatchEvent(new Event('blur', { bubbles: true }))
+    expect(window.__test.wsSent).toEqual({ action: 'apply', data: { mqtt: { client_id: ['text', 'Client ID', { value: 'my-device' }] } } })
+    input.reportValidity = origReport
+  })
+
+  it('hides save button when field violates minlength', () => {
+    window.bindChangeListeners()
+    window.__test.dirty = true
+    var input = document.querySelector('[name="mqtt.client_id"]')
+    input.value = 'ab'
+    input.dispatchEvent(new Event('blur', { bubbles: true }))
+    expect(document.getElementById('btn-save-apply').hidden).toBe(true)
+  })
+
+  it('shows save button when field meets minlength', () => {
+    window.bindChangeListeners()
+    window.__test.dirty = true
+    var input = document.querySelector('[name="mqtt.client_id"]')
+    input.value = 'abc'
+    document.querySelector('[name="notifications.sender"]').value = 'dev@test.com'
+    document.querySelector('[name="mqtt.keepalive"]').value = '61'
+    input.dispatchEvent(new Event('blur', { bubbles: true }))
+    expect(document.getElementById('btn-save-apply').hidden).toBe(false)
+  })
+
+  it('hides save button when field violates pattern', () => {
+    window.bindChangeListeners()
+    window.__test.dirty = true
+    var input = document.querySelector('[name="mqtt.client_id"]')
+    input.value = 'invalid client!'
+    input.dispatchEvent(new Event('blur', { bubbles: true }))
+    expect(document.getElementById('btn-save-apply').hidden).toBe(true)
+  })
+
+  it('hides save button when field exceeds maxlength', () => {
+    window.bindChangeListeners()
+    window.__test.dirty = true
+    var input = document.querySelector('[name="mqtt.client_id"]')
+    input.value = 'a'.repeat(65)
+    input.dispatchEvent(new Event('blur', { bubbles: true }))
+    expect(document.getElementById('btn-save-apply').hidden).toBe(true)
+  })
+
+  it('hides save button when field violates max constraint', () => {
+    window.bindChangeListeners()
+    window.__test.dirty = true
+    var input = document.querySelector('[name="mqtt.keepalive"]')
+    input.value = '100000'
+    input.dispatchEvent(new Event('change', { bubbles: true }))
+    expect(document.getElementById('btn-save-apply').hidden).toBe(true)
+  })
+
+  it('hides save button when field violates step constraint', () => {
+    window.bindChangeListeners()
+    window.__test.dirty = true
+    var input = document.querySelector('[name="mqtt.keepalive"]')
+    input.value = '62'
+    input.dispatchEvent(new Event('change', { bubbles: true }))
+    expect(document.getElementById('btn-save-apply').hidden).toBe(true)
+  })
+
+  it('hides save button when email field has invalid format', () => {
+    window.bindChangeListeners()
+    window.__test.dirty = true
+    var input = document.querySelector('[name="notifications.sender"]')
+    input.value = 'not-an-email'
+    input.dispatchEvent(new Event('blur', { bubbles: true }))
+    expect(document.getElementById('btn-save-apply').hidden).toBe(true)
+  })
+
+  it('shows save button when all fields are valid', () => {
+    window.bindChangeListeners()
+    window.__test.dirty = true
+    document.querySelector('[name="mqtt.client_id"]').value = 'dev01'
+    document.querySelector('[name="notifications.sender"]').value = 'dev@test.com'
+    document.querySelector('[name="mqtt.keepalive"]').value = '61'
+    document.querySelector('[name="mqtt.client_id"]').dispatchEvent(new Event('blur', { bubbles: true }))
+    document.querySelector('[name="notifications.sender"]').dispatchEvent(new Event('blur', { bubbles: true }))
+    expect(document.getElementById('btn-save-apply').hidden).toBe(false)
+  })
+})
