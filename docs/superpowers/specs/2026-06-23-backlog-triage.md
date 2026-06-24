@@ -172,28 +172,24 @@ restore them.
 (ESP-IDF middleware/handler wrapper). The library should not own auth, but
 should document how to add it.
 
-### 11. Spec/plan doc tidy
+### 11. Spec/plan doc tidy ✅ (completed 2026-06-24)
 
-**What:** The `docs/superpowers/` directory has grown to 15 plans + 8 specs.
-Plans are implementation artifacts (all in git history), and several specs
-overlap or are fully superseded.
+**What:** The `docs/superpowers/` tree was tidied. Outdated specs were
+deleted, form validation concepts were merged into the master architecture
+spec, and status variables improvements were merged into the status design
+spec. The implementation plan lived at `docs/superpowers/plans/2026-06-24-doc-tidy.md` while the work was in progress.
 
-**Merge plan for specs:**
+**Final state:**
 
-| File | Action |
+| File | Kept? |
 |---|---|
-| `2026-06-15-esp32-config-ui-design.md` | **Delete** — superseded by unified-settings-design |
-| `2026-06-15-footer-actions-design.md` | **Delete** — superseded by unified-settings-design |
-| `2026-06-16-form-validation-design.md` | **Merge** into unified-settings-design (adds blur/reportValidity details) |
-| `2026-06-18-unified-settings-design.md` | **Keep** — master architecture spec |
-| `2026-06-23-remove-checkbox-type.md` | **Keep** — standalone surgical record |
-| `2026-06-23-status-variables-design.md` | **Keep** — merge status-variables-improvements into it |
-| `2026-06-23-status-variables-improvements.md` | **Delete** — merged into status-variables-design |
-| `2026-06-23-backlog-triage.md` | **Keep** — this document |
+| `2026-06-18-unified-settings-design.md` | ✓ Master architecture spec |
+| `2026-06-23-status-variables-design.md` | ✓ Status design (absorbed improvements) |
+| `2026-06-23-checkbox-archive.md` | ✓ Archive — checkbox removal record, `checkpoint/checkbox` branch ref |
+| `2026-06-23-backlog-triage.md` | ✓ This document |
+| `2026-06-24-code-issues.md` | ✓ Bugs found during tidy |
 
-**Plans:** Delete all 12 files in `plans/` + 2 ref files. Git history preserves them.
-
-**Result:** 8 specs → 4 specs, 14 plans → 0 plans.
+**Result:** 8 specs → 5 specs, 2 ref files → 0 ref files, `plans/` directory deleted.
 
 ### 12. GitHub representation + integration docs
 

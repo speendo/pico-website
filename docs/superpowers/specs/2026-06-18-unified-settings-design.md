@@ -9,20 +9,31 @@ logic between HTTP and WebSocket paths, form rendering, and serialization.
 
 ## Overview
 
-Consolidate the current per-component JSON file system into a single `/api/settings`
-endpoint, introduce server-owned dirty tracking, add a Python test server, and
-eventually swap HTTP transport for WebSocket.
+A single `/api/settings` endpoint serves all component definitions as nested JSON.
+Server-owned `_dirty` tracking drives the Save button. WebSocket at `/api/events`
+is the primary transport — HTTP `/api/settings` GET is a fallback.
 
-## Phase Plan
+## Current Architecture
 
-| Phase | Scope | Key Changes | Testable via |
-|---|---|---|---|
-| 1 | Python test server | FastAPI mock serving current API (manifest + per-component JSON + POST endpoints) | Manual curl/browser |
-| 2 | TDD for existing JS | Add vitest, write tests for current behavior | `npm test` |
-| 3 | Spec document | This document — JSON structure, API contract | Review |
-| 4 | Unified `/api/settings` | Nested JSON structure, drop manifest, single GET endpoint | Python server v2 |
-| 5 | Server-owned `_dirty` | `_dirty` from ESP32, derived `_modified` concept (FV≠AV), no Apply button | Python server + tests |
-| 6 | WebSocket transport | Apply on blur, server-push, reconnect fallback | Python server + tests |
+The system is built around a single WebSocket connection at `/api/events` with
+HTTP used only for persistence:
+
+- **WS connection** — primary transport. Server pushes full settings + status on
+  connect, fields auto-apply on blur, and external changes are pushed live.
+- **`/api/settings` GET** — HTTP fallback for full settings load (used when WS
+  is unavailable, e.g. first load on slow connections).
+- **`/api/settings/save` POST** — persist current applied values to NVS. The
+  only HTTP endpoint clients call directly; WS blur handles apply.
+- **`_dirty`** — server-owned boolean, true when applied ≠ stored (NVS). Drives
+  the Save button visibility (see Buttons section).
+- **10-case state machine** — tracks FV (form value), LS (last sent), AV
+  (applied value), and inFlight per field. Handles echo resolution, external
+  updates, collision detection, and conflict resolution.
+- **Status variables** — read-only telemetry pushed over the same WS connection
+  (`msg.type === "status"`), rendered as disabled fields before settings
+  sections. See `status-variables-design.md` for the full design.
+- **Notification bar** — `#server-changed` mark element for external update
+  alerts and collision prompts (Cases 3 and 5 in the state machine).
 
 ---
 
@@ -66,8 +77,7 @@ Each key under a component group is a 3-element array:
 ### Meta fields
 
 - `_dirty` (bool) — owned by ESP32. `true` when applied settings ≠ stored (NVS) settings.
-  Server sends this **before** the `data` object in the JSON.
-  Determines "Save & Apply" button availability.
+  Drives the Save button visibility (see Buttons section).
 
 ### Naming conventions
 
@@ -96,20 +106,20 @@ matching the structure of `/api/settings` but containing only the affected keys.
 
 HTTP GET and WS initial push respond with the **full** settings.
 
-### Phase 4–5 (HTTP)
+### HTTP Endpoints
 
 | Method | Endpoint | Purpose | Body |
 |---|---|---|---|
 | GET | `/api/settings` | Load full settings | — |
 | POST | `/api/settings/save` | Persist diff to NVS | `{"wifi": {"ssid": ["text", "SSID", {"value": "MyNetwork"}]}}` |
-| POST | `/api/settings/apply` | Activate diff live | same format |
 
 - Success: HTTP 200 with empty body.
 - Error: HTTP 4xx/5xx with plain text error message body.
 
-### Phase 6 (WebSocket)
+### WebSocket (`/api/events`)
 
-Endpoint: `ws://<host>/api/settings/ws`
+A single WebSocket carries both `"settings"` and `"status"` messages,
+multiplexed via the `msg.type` field.
 
 #### Client → Server
 
@@ -122,12 +132,12 @@ persisting to NVS. Persistence is always done via POST `/api/settings/save`.
 
 #### Server → Client
 
-| Message                                                                  | When                                                     |
-| --------------------------------------------------------------------------| ----------------------------------------------------------|
-| `{"_dirty": true, "type": "settings", "data": {<full settings object>}}` | Initial connect, reconnect, after external config change |
-| `{"type": "error", "message": "..."}`                                    | Processing error                                         |
+| Message | When |
+|---|---|
+| `{"type": "status", "data": {<full status object>}}` | Initial connect, then every 3s (broadcast) |
+| `{"type": "settings", "_dirty": <bool>, "data": {<full settings object>}}` | Initial connect, reconnect, after external config change, after apply |
+| `{"type": "error", "message": "..."}` | Processing error |
 
-- `_dirty` appears **before** `type` and `data` in the JSON.
 - Server push is handled by the state machine (see Data Model section below):
   - **Case 3** (external update, user idle): notification with "Load" / "Keep" choice.
   - **Case 4** (coincidental sync): silent sync.
@@ -141,10 +151,11 @@ persisting to NVS. Persistence is always done via POST `/api/settings/save`.
 #### Connection lifecycle
 
 1. Page loads → set `aria-busy="true"` on form container (Pico CSS loading indicator).
-2. JS opens WS connection.
-3. Server sends full settings → remove `aria-busy`, render form.
+2. JS opens WS connection to `/api/events`.
+3. Server sends status data (`{"type": "status", ...}`), then full settings
+   (`{"type": "settings", ...}`) → remove `aria-busy`, render form.
 4. If WS connection fails → show error state with retry button.
-5. On reconnect → set `aria-busy`, server sends full settings again + current `_dirty` state → remove `aria-busy`.
+5. On reconnect → set `aria-busy`, server re-sends status then settings → remove `aria-busy`.
 
 ---
 
@@ -155,7 +166,7 @@ persisting to NVS. Persistence is always done via POST `/api/settings/save`.
 | Value | Owner | Where | Persistence |
 |---|---|---|---|---|
 | Stored (NVS) | ESP32 only | Never sent to client | Survives reboot |
-| Applied (AV) | ESP32 | Sent via `/api/settings` (Phase 4–5: HTTP GET; Phase 6: WS push) | Active in RAM |
+| Applied (AV) | ESP32 | Sent via WS push (or HTTP GET fallback) | Active in RAM |
 | Form value (FV) | Browser | Local form state | Transient |
 
 Plus two client-local tracking fields per form field:
@@ -166,7 +177,7 @@ Plus two client-local tracking fields per form field:
 `_modified` is a derived concept, not a stored variable: it means FV differs from AV
 when inFlight is false (the user has local changes ready to send).
 
-### State machine (Phase 6, WebSocket)
+### State machine
 
 **Case table:**
 
@@ -261,66 +272,37 @@ function onServerMessage(newAV):
 
 ### Buttons
 
-| Button | Phase 4–5 | Phase 6 |
-|---|---|---|
-| Save & Apply | Enabled when FV ≠ AV (→ `_modified`) | Enabled when `_dirty` is true |
-| Apply | Enabled when FV ≠ AV (→ `_modified`) | Removed — apply on blur via WS |
-| Reset | Requests fresh settings via GET | Requests fresh settings via WS |
+| Button | Enabled when |
+|---|---|
+| Save | `_dirty` is true AND `configForm.checkValidity()` passes |
+
+Apply is automatic on blur via WebSocket. There is no separate Apply or Reset
+button in the footer.
 
 ---
 
-## Phase Details
+## Form Validation
 
-### Phase 1: Python Test Server
+Validation rules are declared as HTML attributes (`required`, `min`, `max`,
+`minlength`, `maxlength`, `pattern`, `step`) in the `attrs` field of component
+schemas. Pico CSS applies `:invalid` styling natively via the browser's
+Constraint Validation API — no custom CSS is needed.
 
-- Framework: FastAPI + uvicorn
-- Location: `test_server/main.py`
-- Serves: static files (current `index.html`, `app.js`), manifest JSON,
-  per-component JSON files, POST `/api/save`, POST `/api/apply`
-- State: in-memory dictionary, mimic NVS semantics
-- Startup: `pip install fastapi uvicorn && uvicorn test_server.main:app`
+**Blur gate:** When a user leaves a field, the handler calls `el.checkValidity()`.
+Invalid fields block the auto-apply WebSocket send and keep the field out of the
+Save-enabled state.
 
-### Phase 2: TDD for existing JS
+**Button gating:** The Save button enables only when both conditions hold:
+1. `_dirty` is true (server has pending NVS writes)
+2. `configForm.checkValidity()` passes (all fields pass native validation)
 
-- Test framework: vitest
-- Location: `tests/`
-- Scope: existing JS functions — `serialize`, `getPending`, `createField`,
-  `populateFromComponents`, `applyAttrs`
-- Approach: mock `fetch` / DOM as needed, test current behavior
-- These tests evolve in later phases as the code changes
+Both checks happen in `updateUI()`.
 
-### Phase 3: Spec Document & Project Guidance
-
-- This document.
-- Write `AGENTS.md` in project root documenting ESP32 constraints: favor
-  client-side computation, compact wire formats, DRY across HTTP/WS paths, DRY for JS functions,
-  avoid unnecessary server dependencies.
-
-### Phase 4: Unified `/api/settings`
-
-- JS drops manifest loading
-- Single GET `/api/settings` on init
-- JS iterates top-level keys for component discovery
-- Field `value` replaces `default` as the initial form value
-- Test server upgraded to serve new JSON structure
-
-### Phase 5: Server-Owned `_dirty`
-
-- JS stores last known applied values as `baseline`
-- `_modified` is a derived concept: FV ≠ AV (baseline vs current form)
-- `_dirty` from server drives Save & Apply button
-- Apply button kept (removed in Phase 6 when WS blur replaces it)
-- Test server tracks `_dirty` internally
-
-### Phase 6: WebSocket
-
-- WS endpoint added to test server
-- JS connects WS on page load
-- Apply button removed (replaced by apply-on-blur over WS)
-- Server-push for external changes
-- WS reconnect fallback with error + retry UI
-- POST `/api/settings/save` remains HTTP
-- HTTP GET `/api/settings` replaced by WS initial push
+**Event types by field:**
+- `text`, `password`, `email`, `tel`, `url`, `textarea` — `blur` triggers validation + auto-apply
+- `select`, `range`, `number` — `change` triggers auto-apply
+- `radio`, `switch` — `click`/`change` triggers auto-apply
+- All fields — `input` calls `updateUI()` for live pending count feedback
 
 ---
 
@@ -330,12 +312,11 @@ function onServerMessage(newAV):
 - WS errors: `{"type": "error", "message": "..."}`, displayed in status bar.
 - WS connection failure: error state with retry button. Page shows "Cannot
   connect to device" with a Retry button.
-- Form validation: client-side HTML5 validation (unchanged from current).
 
 ---
 
 ## Future Considerations
 
-- `/api/system/restart`, `/api/firmware/upload` etc. — new top-level API paths
-- Status info pushed over WS (heap, uptime, signal strength)
-- Multiple clients: `_dirty` collision resolution
+- `/api/system/restart`, `/api/firmware/upload` — additional API paths
+- Multiple clients connected to the same device
+- Group name `_label` override for auto-derived component labels

@@ -84,9 +84,8 @@ Client walks the `data` tree, finds the matching component + field, updates
 - `<summary>` elements in status sections get `class="secondary"` (Pico CSS
   muted text color). No custom CSS needed.
 - All status form fields are rendered with `disabled` attribute.
-- `createField` sets `disabled` when the field belongs to
-  `statusComponents` — either by passing a flag, or by checking membership in
-  the status array at render time.
+- `createField` accepts an `isStatus` third argument that sets `disabled` on
+  the field element.
 
 ## JS Architecture
 
@@ -195,12 +194,28 @@ FastAPI routes are explicit).
   First status message renders status sections.
 - **Partial update:** The diff handler walks the partial data tree, finds
   matching fields in `statusComponents`, updates `field.opts.value`, and
-  optionally updates just that field's DOM element via `readFormValue`.
+  updates the affected DOM elements via `populateFromComponents(statusComponents)`.
 - **Disabled switches/radios:** Browsers don't fire change events on disabled
   inputs. `bindChangeListeners` binds handlers but they never fire. This is
   correct behavior — no guard needed.
 - **Settings with no status server:** If the server only sends settings
   messages (legacy), status sections simply never appear. No crash.
+
+## Architecture Notes
+
+**Broadcast interval:** The test server broadcasts status every 3 seconds via
+an asyncio background task. This interval balances visible real-time updates
+against WebSocket overhead. On a real ESP32, status updates would be
+event-driven (firmware events trigger pushes) rather than timer-based.
+
+**Server-side computation:** `uptime`, `signal`, and `temperature` are
+computed at call time in `build_status()`. No client-side timers or
+computation are needed — the server owns all dynamic values.
+
+**Partial updates:** Subsequent status messages may contain only changed
+fields. The client's `processStatus` function merges these into the in-memory
+`statusComponents` tree and updates only the affected DOM elements via
+`populateFromComponents(statusComponents)`.
 
 ## Future Considerations
 
