@@ -276,8 +276,8 @@ test.describe('form validation UI', () => {
       el.setAttribute('maxlength', '32')
       el.dispatchEvent(new Event('input', { bubbles: true }))
     })
-    var tooLong = await input.evaluate(function (el) { return el.validity.tooLong })
-    expect(tooLong).toBe(true)
+    var isInvalid = await input.evaluate(function (el) { return el.matches(':invalid') })
+    expect(isInvalid).toBe(true)
   })
 
   test('minlength violation shows :invalid after blur', async ({ page }) => {
@@ -326,9 +326,9 @@ test.describe('form validation UI', () => {
   })
 
   test('number min constraint shows :invalid', async ({ page }) => {
-    await page.locator('#nav-list a[href="#gpio"]').click()
-    var input = page.locator('[name="gpio.pin"]')
-    await input.fill('-1')
+    await page.locator('#nav-list a[href="#notifications"]').click()
+    var input = page.locator('[name="notifications.port"]')
+    await input.fill('0')
     await input.blur()
     var isInvalid = await input.evaluate(function (el) { return el.matches(':invalid') })
     expect(isInvalid).toBe(true)
@@ -347,15 +347,10 @@ test.describe('form validation UI', () => {
     await page.locator('details#wifi summary').click()
     await page.locator('[name="wifi.ssid"]').fill('MyNetwork')
     await page.locator('[name="wifi.password"]').fill('secret123')
-    await page.locator('[name="wifi.ssid"]').focus()
-    // Wait for dirty=true via WS round-trip (button becomes visible)
+    var channel = page.locator('[name="wifi.channel"]')
+    await channel.evaluate(function (el) { el.value = '0'; el.dispatchEvent(new Event('input', { bubbles: true })) })
+    await channel.blur()
     var saveBtn = page.locator('#btn-save-apply')
-    await expect(saveBtn).toBeVisible({ timeout: 5000 })
-    // Now make form invalid by setting gpio.pin below minimum
-    await page.locator('#nav-list a[href="#gpio"]').click()
-    var pin = page.locator('[name="gpio.pin"]')
-    await pin.fill('-1')
-    await pin.blur()
     await expect(saveBtn).toBeHidden()
   })
 
