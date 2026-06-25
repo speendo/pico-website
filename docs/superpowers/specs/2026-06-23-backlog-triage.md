@@ -136,11 +136,32 @@ This would make it a real feature.
 - ESP32 backend: implement the reset endpoint (reload NVS → AV)
 - Test server: already exists
 
+### 7. Checkbox re-implementation (third "invalid" state)
+
+**What:** Bring back `<input type="checkbox">` as a distinct field type from
+`switch`, justified by the third **invalid/indeterminate** state.
+
+**Rationale:** A `<input type="checkbox" role="switch">` is always on or off.
+A plain checkbox can be `indeterminate` — a visual "not yet set" state that
+surfaces missing user choices at a glance. The indeterminate checkbox renders
+as `null` on the wire, distinct from `true`/`false`.
+
+**Wire format:** `true` (checked), `false` (unchecked), `null` (indeterminate).
+
+**Validation:** `null` is treated as invalid, blocking form submission until
+the user makes an explicit choice.
+
+**Changes:**
+- Add `"checkbox"` to `createField()` field type dispatch
+- `serialize()`/`populateFromComponents()`: handle `null` for indeterminate
+- CSS: indeterminate checkbox styling (distinct from checked/unchecked)
+- Update `docs/reference/field-format.md` with the three-state wire format
+
 ---
 
 ## Lower Priority
 
-### 7. Reboot server
+### 8. Reboot server
 
 **What:** A "Reboot" button that POSTs to `/api/system/reboot`.
 
@@ -150,7 +171,7 @@ automatically when device comes back.
 
 **ESP32 side:** `esp_restart()` call on endpoint hit.
 
-### 8. Firmware upload
+### 9. Firmware upload
 
 **What:** An OTA firmware update page.
 
@@ -163,7 +184,7 @@ automatically when device comes back.
 **ESP32 side:** ESP-IDF OTA API (`esp_ota_begin`, `esp_ota_write`,
 `esp_ota_end`).
 
-### 9. Export/import settings
+### 10. Export/import settings
 
 **What:** Download current settings as a JSON file, upload a JSON file to
 restore them.
@@ -172,7 +193,7 @@ restore them.
 "Import" button → file picker → POST JSON to `/api/settings/import` (or reuse
 `/api/settings/save`).
 
-### 10. Basic auth
+### 11. Basic auth
 
 **What:** Optional HTTP Basic Auth gate on the settings endpoints.
 
@@ -180,7 +201,7 @@ restore them.
 (ESP-IDF middleware/handler wrapper). The library should not own auth, but
 should document how to add it.
 
-### 11. Spec/plan doc tidy ✅ (completed 2026-06-24)
+### 12. Spec/plan doc tidy ✅ (completed 2026-06-24)
 
 **What:** The `docs/superpowers/` tree was tidied. Outdated specs were
 deleted, form validation concepts were merged into the master architecture
@@ -199,7 +220,7 @@ spec. The implementation plan lived at `docs/superpowers/plans/2026-06-24-doc-ti
 
 **Result:** 8 specs → 5 specs, 2 ref files → 0 ref files, `plans/` directory deleted.
 
-### 12. GitHub representation + integration docs
+### 13. GitHub representation + integration docs
 
 **What:** A polished README with:
 - Screenshot of the UI
@@ -218,10 +239,11 @@ Validation fix ──┐
                  ├──> ESP32 backend ──> (base for all ESP32-side items)
 Edge cases ──────┘
 
-Group name labels ──> (trivial, can be done anytime)
-Nav image/favicon ──> (trivial, can be done anytime)
-Reset button ───────> (needs ESP32 backend for NVS reload)
-Doc tidy ───────────> (can be done anytime)
+Group name labels ────> (trivial, can be done anytime)
+Nav image/favicon ────> (trivial, can be done anytime)
+Reset button ─────────> (needs ESP32 backend for NVS reload)
+Checkbox revival ─────> (pure client, can be done anytime)
+Doc tidy ─────────────> (can be done anytime)
 
 Reboot ────────────> (needs ESP32 backend + reset endpoint pattern)
 Firmware upload ───> (needs ESP32 backend, most complex)
@@ -236,9 +258,10 @@ GitHub/docs ───────> (can be done anytime, best after features sta
 3. Group name labels (trivial, 5-minute change)
 4. Nav image/favicon (trivial, 5-minute change)
 5. Edge cases audit (important before backend, could catch JS protocol issues)
-6. ESP32 backend (biggest item, enables everything else)
-7. Reset button (needs backend)
-8. Reboot (needs backend)
-9. Firmware upload (needs backend, most complex)
-10. Export/import (can be done independently)
-11. GitHub/docs (last, to reflect final state)
+6. Checkbox revival (pure client, no backend dependency)
+7. ESP32 backend (biggest item, enables everything else)
+8. Reset button (needs backend)
+9. Reboot (needs backend)
+10. Firmware upload (needs backend, most complex)
+11. Export/import (can be done independently)
+12. GitHub/docs (last, to reflect final state)
