@@ -1561,20 +1561,14 @@ describe('aria-invalid', function () {
     expect(input.getAttribute('aria-invalid')).toBe('true')
   })
 
-  it('prevents closing details section that has aria-invalid="true" child', function () {
-    var details = document.createElement('details')
-    details.id = 'test-section'
-    details.open = true
-    var summary = document.createElement('summary')
-    summary.textContent = 'Test'
-    details.appendChild(summary)
-    var input = document.createElement('input')
-    input.name = 'test.field'
-    input.setAttribute('aria-invalid', 'true')
-    details.appendChild(input)
-    document.getElementById('config-form').appendChild(details)
-    details.open = false
-    details.dispatchEvent(new Event('toggle', { bubbles: false }))
-    expect(details.open).toBe(true)
+  it('opens details section on renderForm when it has aria-invalid child', function () {
+    document.querySelector('#config-form').innerHTML = ''
+    window.__test.components = [{ id: 'wifi', label: 'WiFi', fields: [
+      { key: 'password', type: 'password', label: 'Password', opts: { attrs: { required: true }, value: '' } }
+    ]}]
+    window.__test.statusComponents = []
+    window.renderForm()
+    var details = document.getElementById('wifi')
+        expect(details.open).toBe(true)
   })
 })

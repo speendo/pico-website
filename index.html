@@ -31,6 +31,12 @@
       footer:not(:has(button:not([hidden]))):has(#status-bar:empty) {
         display: none;
       }
+      details[open]:has([aria-invalid="true"]) summary {
+        pointer-events: none;
+      }
+      details[open]:has([aria-invalid="true"]) summary::after {
+        display: none;
+      }
     </style>
 </head>
 <body>

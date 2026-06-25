@@ -291,17 +291,23 @@ styling. The JS manages this attribute on every form field.
 
 **Initial state:** After `renderForm()` builds the DOM, each named form field
 receives `aria-invalid` based on `checkValidity()`. Required fields that are
-empty and have no default value appear invalid immediately.
+empty and have no default value appear invalid immediately. Any `<details>`
+section containing an `[aria-invalid="true"]` field is forced open so the user
+sees the invalid fields on load without needing to open the accordion.
 
 **Per-field validation:** On blur/change/click (determined by field type), the
 handler calls `el.checkValidity()` and sets `aria-invalid` to `"true"` or
 `"false"` based on the result. Invalid fields block the auto-apply WebSocket
 send and keep the field out of the Save-enabled state. The handler also forces
 the parent `<details>` accordion open so the user can see the invalid field
-even if they had closed the section. A capture-phase `toggle` event listener on
-`configForm` prevents closing any `<details>` section that still contains
-`[aria-invalid="true"]` fields, keeping invalid fields visible at all times. The `reportValidity()` method is
-NOT used (to avoid native browser validation pop-ups).
+even if they had closed the section. The `reportValidity()` method is NOT used
+(to avoid native browser validation pop-ups).
+
+**Accordion toggle guard:** A CSS rule
+(`details[open]:has([aria-invalid="true"]) summary`) sets
+`pointer-events: none` on the summary and hides its `::after` caret when any
+child field is invalid. This prevents closing the section — the caret
+disappears and clicks on the summary are ignored.
 
 **First-interaction gating:** On page load, required fields that have never been
 interacted with do NOT block the save button. A `formInteracted` flag starts

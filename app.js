@@ -626,13 +626,9 @@
     for (var fi = 0; fi < fields.length; fi++) {
       if (fields[fi].name) fields[fi].setAttribute('aria-invalid', fields[fi].checkValidity() ? 'false' : 'true');
     }
-    if (!configForm._toggleGuardWired) {
-      configForm._toggleGuardWired = true;
-      configForm.addEventListener('toggle', function (e) {
-        if (!e.target.open && e.target.tagName === 'DETAILS') {
-          if (e.target.querySelector('[aria-invalid="true"]')) e.target.open = true;
-        }
-      }, true);
+    var details = configForm.querySelectorAll('details');
+    for (var di = 0; di < details.length; di++) {
+      if (details[di].querySelector('[aria-invalid="true"]')) details[di].open = true;
     }
   }
 

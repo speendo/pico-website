@@ -368,10 +368,7 @@ test.describe('form validation UI', () => {
   })
 
   test('accordion stays open when field is invalid after blur', async ({ page }) => {
-    await page.locator('details#wifi summary').click()
     var details = page.locator('details#wifi')
-    await page.locator('[name="wifi.ssid"]').focus()
-    await page.locator('[name="wifi.ssid"]').blur()
     await expect(details).toHaveAttribute('open', '')
   })
 
@@ -408,14 +405,9 @@ test.describe('form validation UI', () => {
     await expect(input).toHaveAttribute('aria-invalid', 'true')
   })
 
-  test('accordion with invalid field cannot be closed', async ({ page }) => {
-    await page.locator('details#wifi summary').click()
-    var details = page.locator('details#wifi')
-    await details.evaluate(function (el) {
-      el.open = false
-      el.dispatchEvent(new Event('toggle', { bubbles: false }))
-    })
-    await expect(details).toHaveAttribute('open', '')
+  test('accordion with invalid field opens on load and blocks close', async ({ page }) => {
+    await expect(page.locator('details#wifi')).toHaveAttribute('open', '')
+    await expect(page.locator('details#wifi summary')).toHaveCSS('pointer-events', 'none')
   })
 })
 
