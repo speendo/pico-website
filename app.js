@@ -626,6 +626,14 @@
     for (var fi = 0; fi < fields.length; fi++) {
       if (fields[fi].name) fields[fi].setAttribute('aria-invalid', 'false');
     }
+    if (!configForm._toggleGuardWired) {
+      configForm._toggleGuardWired = true;
+      configForm.addEventListener('toggle', function (e) {
+        if (!e.target.open && e.target.tagName === 'DETAILS') {
+          if (e.target.querySelector(':invalid')) e.target.open = true;
+        }
+      });
+    }
   }
 
   /** Render a details/section block for a component. @param {Object} comp @param {boolean} isStatus */

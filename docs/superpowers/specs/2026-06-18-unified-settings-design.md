@@ -46,7 +46,7 @@ HTTP used only for persistence:
   "_dirty": false,
   "wifi": {
     "ssid":     ["text", "SSID",     {"value": "MyNetwork", "tooltip": "WiFi network name \u2014 required, 1\u201332 characters"}],
-    "password": ["password", "Password", {"value": "password", "attrs": {"maxlength": 64}, "tooltip": "WiFi password \u2014 required, up to 64 characters"}],
+    "password": ["password", "Password", {"value": "", "attrs": {"maxlength": 64}, "tooltip": "WiFi password \u2014 required, up to 64 characters"}],
     "mode":     ["select", "Mode",   {"value": "station", "options": [["station","Station"],["ap","Access Point"]]}]
   },
   "gpio": {
@@ -298,8 +298,10 @@ handler calls `el.checkValidity()` and sets `aria-invalid` to `"true"` or
 `"false"` based on the result. Invalid fields block the auto-apply WebSocket
 send and keep the field out of the Save-enabled state. The handler also forces
 the parent `<details>` accordion open so the user can see the invalid field
-even if they had closed the section. The `reportValidity()` method is NOT used
-(to avoid native browser validation pop-ups).
+even if they had closed the section. A `toggle` event listener on `configForm`
+prevents closing any `<details>` section that still contains `:invalid` fields,
+keeping invalid fields visible at all times. The `reportValidity()` method is
+NOT used (to avoid native browser validation pop-ups).
 
 **First-interaction gating:** On page load, required fields that have never been
 interacted with do NOT block the save button. A `formInteracted` flag starts
