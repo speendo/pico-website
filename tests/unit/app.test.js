@@ -713,6 +713,30 @@ describe('processSettings', () => {
     window.processSettings({ wifi: { ssid: ['text', 'SSID', { value: '' }] } }, false)
     expect(document.getElementById('status-bar').textContent).toBe('')
   })
+
+  it('uses group.label when present instead of labelFromKey', function () {
+    var data = {
+      wifi: { label: 'Wi-Fi', ssid: ['text', 'SSID', { value: 'MyNet' }] }
+    }
+    window.processSettings(data, false)
+    expect(window.__test.components.length).toBe(1)
+    expect(window.__test.components[0].label).toBe('Wi-Fi')
+  })
+
+  it('does not add label key as a field', function () {
+    var data = {
+      wifi: {
+        label: 'Custom Label',
+        ssid: ['text', 'SSID', { value: 'MyNet' }],
+        channel: ['range', 'Channel', { value: 6 }]
+      }
+    }
+    window.processSettings(data, false)
+    expect(window.__test.components.length).toBe(1)
+    var hasLabelField = window.__test.components[0].fields.some(function (f) { return f.key === 'label' })
+    expect(hasLabelField).toBe(false)
+    expect(window.__test.components[0].fields.length).toBe(2)
+  })
 })
 
 describe('findField', function () {

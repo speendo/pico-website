@@ -249,10 +249,11 @@
       var group = data[key];
       var fields = [];
       for (var fieldKey in group) {
+        if (fieldKey === 'label') continue;
         var arr = group[fieldKey];
         fields.push({key: fieldKey, type: arr[0], label: arr[1], opts: arr[2]});
       }
-      comps.push({id: key, label: labelFromKey(key), fields: fields});
+      comps.push({id: key, label: group.label || labelFromKey(key), fields: fields});
     }
     components = comps;
     renderNav();
@@ -279,10 +280,11 @@
         var group = data[key];
         var fields = [];
         for (var fieldKey in group) {
+          if (fieldKey === 'label') continue;
           var arr = group[fieldKey];
           fields.push({key: fieldKey, type: arr[0], label: arr[1], opts: arr[2]});
         }
-        statusComponents.push({id: key, label: labelFromKey(key), fields: fields});
+        statusComponents.push({id: key, label: group.label || labelFromKey(key), fields: fields});
       }
       if (components.length > 0) {
         renderForm();

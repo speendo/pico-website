@@ -14,6 +14,7 @@ BASE = Path(__file__).resolve().parent.parent
 # {field_key: [type, label, opts]}
 SETTINGS = {
     "wifi": {
+        "label": "Wi-Fi",
         "ssid": ["text", "SSID", {"attrs": {"maxlength": 32, "placeholder": "MyNetwork", "required": True}, "value": "MyNetwork", "help": "WiFi network name — required, 1–32 characters"}],
         "password": ["password", "Password", {"attrs": {"maxlength": 64, "placeholder": "Enter password", "required": True}, "value": "", "help": "WiFi password — required, up to 64 characters"}],
         "mode": ["select", "Mode", {"options": [["station", "Station"], ["ap", "Access Point"]], "value": "station", "help": "WiFi operating mode: Station or Access Point"}],
