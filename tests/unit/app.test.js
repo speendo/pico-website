@@ -1708,3 +1708,50 @@ describe('aria-invalid', function () {
         expect(details.open).toBe(true)
   })
 })
+
+describe('checkbox indeterminate validation', function () {
+  beforeEach(function () {
+    document.querySelector('#config-form').innerHTML = [
+      '<input type="checkbox" name="notifications.confirm" required />',
+    ].join('')
+    window.__test.components = [{ id: 'notifications', fields: [
+      { key: 'confirm', type: 'checkbox', label: 'Confirm Alerts', opts: { attrs: { required: true } } },
+    ]}]
+    window.__test.dirty = false
+    window.__test.lastSent = {}
+    window.__test.inFlight = {}
+    window.__test.onWSSend = function () {}
+    window.setBaseline()
+    window.connectWS()
+    window.__test.wsReady()
+  })
+
+  it('blocks send when indeterminate and required', function () {
+    var el = document.querySelector('[name="notifications.confirm"]')
+    el.indeterminate = true
+    window.bindChangeListeners()
+    el.dispatchEvent(new Event('change', { bubbles: true }))
+    expect(el.getAttribute('aria-invalid')).toBe('true')
+    expect(window.__test.lastSent['notifications.confirm']).toBeUndefined()
+  })
+
+  it('allows send when indeterminate and not required', function () {
+    document.querySelector('#config-form').innerHTML = [
+      '<input type="checkbox" name="notifications.confirm" />',
+    ].join('')
+    window.__test.components = [{ id: 'notifications', fields: [
+      { key: 'confirm', type: 'checkbox', label: 'Confirm Alerts', opts: {} },
+    ]}]
+    window.__test.lastSent = {}
+    window.__test.inFlight = {}
+    window.__test.onWSSend = function () {}
+    window.connectWS()
+    window.__test.wsReady()
+    var el = document.querySelector('[name="notifications.confirm"]')
+    el.indeterminate = true
+    window.bindChangeListeners()
+    el.dispatchEvent(new Event('change', { bubbles: true }))
+    expect(el.getAttribute('aria-invalid')).toBe('false')
+    expect(window.__test.lastSent['notifications.confirm']).toBe(null)
+  })
+})

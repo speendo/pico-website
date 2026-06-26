@@ -686,10 +686,10 @@
         var handler = function () {
           formInteracted = true;
           var valid = el.checkValidity();
+          if (valid && el.indeterminate && el.required) valid = false;
           el.setAttribute('aria-invalid', valid ? 'false' : 'true');
           if (!valid) { var d = el.closest('details'); if (d) d.open = true; updateUI(); return; }
-          var val = (el.type === 'checkbox') ? el.checked :
-                    (el.type === 'number' || el.type === 'range') ? parseFloat(el.value) : el.value;
+          var val = readFormValue(key.split('.'));
           onUserInput(key, val);
           updateUI();
         };
