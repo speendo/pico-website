@@ -773,7 +773,7 @@
       var container = document.createElement('div');
       container.appendChild(input);
       container.appendChild(label);
-      addHelperText(container, input.id, opts.tooltip, input);
+      addHelperText(container, input.id, opts.help, input);
       return container;
     }
 
@@ -804,7 +804,7 @@
       }
       var container = document.createElement('div');
       container.appendChild(fieldset);
-      addHelperText(container, namePrefix + '.' + key, opts.tooltip, null);
+      addHelperText(container, namePrefix + '.' + key, opts.help, null);
       return container;
     }
 
@@ -865,7 +865,7 @@
     var container = document.createElement('div');
     container.appendChild(labelEl);
       container.appendChild(input);
-      addHelperText(container, input.id, opts.tooltip, input);
+      addHelperText(container, input.id, opts.help, input);
     if (rangeOutput) {
       container.appendChild(rangeOutput);
     }

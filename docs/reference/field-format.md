@@ -64,18 +64,18 @@ Settings messages include the `_dirty` meta field:
 {
   "_dirty": false,
   "wifi": {
-    "ssid":     ["text", "SSID",     {"value": "MyNetwork", "tooltip": "WiFi network name"}],
+    "ssid":     ["text", "SSID",     {"value": "MyNetwork", "help": "WiFi network name"}],
     "password": ["password", "Password", {"value": "", "attrs": {"maxlength": 64}}],
     "mode":     ["select", "Mode",   {"value": "station", "options": [["station","Station"],["ap","Access Point"]]}],
-    "hidden":   ["switch", "Hidden SSID", {"value": false, "tooltip": "Hide network from scans"}],
-    "channel":  ["range", "Channel", {"attrs": {"min": 1, "max": 13, "step": 1}, "value": 6, "tooltip": "WiFi channel number"}]
+    "hidden":   ["switch", "Hidden SSID", {"value": false, "help": "Hide network from scans"}],
+    "channel":  ["range", "Channel", {"attrs": {"min": 1, "max": 13, "step": 1}, "value": 6, "help": "WiFi channel number"}]
   },
   "gpio": {
-    "pin":       ["number", "Pin Number",  {"attrs": {"min": 0, "max": 39}, "value": 2, "tooltip": "GPIO pin number"}],
+    "pin":       ["number", "Pin Number",  {"attrs": {"min": 0, "max": 39}, "value": 2, "help": "GPIO pin number"}],
     "direction": ["select", "Direction",   {"options": [["input","Input"],["output","Output"]], "value": "output"}],
     "pull":      ["radio", "Pull Resistor",{"options": [["none","None"],["up","Pull Up"],["down","Pull Down"]], "value": "none"}],
-    "enabled":   ["switch", "GPIO Enabled",{"value": true, "tooltip": "Enable this GPIO pin"}],
-    "inverted":  ["switch", "Inverted",    {"value": false, "tooltip": "Invert GPIO signal level"}],
+    "enabled":   ["switch", "GPIO Enabled",{"value": true, "help": "Enable this GPIO pin"}],
+    "inverted":  ["switch", "Inverted",    {"value": false, "help": "Invert GPIO signal level"}],
     "initial":   ["select", "Initial State",{"options": [["low","Low"],["high","High"]], "value": "low"}]
   }
 }
@@ -94,15 +94,15 @@ Status messages have **no** `_dirty` field. All fields render as disabled.
     "system": {
       "uptime":     ["text", "Uptime",    {"value": "1d 2h 30m 15s"}],
       "fw_version": ["select", "Firmware",{"options": [["2.0.0","2.0.0"],["2.1.0","2.1.0"],["2.2.0-beta","2.2.0-beta"]], "value": "2.1.0"}],
-      "led":        ["switch", "LED",     {"value": true, "tooltip": "System LED indicator"}]
+      "led":        ["switch", "LED",     {"value": true, "help": "System LED indicator"}]
     },
     "network": {
-      "mode":       ["radio", "Mode",     {"options": [["auto","Auto"],["manual","Manual"],["safe","Safe"]], "value": "auto", "tooltip": "Network operation mode"}],
-      "signal":     ["range", "Signal",   {"attrs": {"min": 0, "max": 100, "step": 1}, "value": "75", "tooltip": "Signal strength %"}],
+      "mode":       ["radio", "Mode",     {"options": [["auto","Auto"],["manual","Manual"],["safe","Safe"]], "value": "auto", "help": "Network operation mode"}],
+      "signal":     ["range", "Signal",   {"attrs": {"min": 0, "max": 100, "step": 1}, "value": "75", "help": "Signal strength %"}],
       "connection": ["select", "Connection",{"options": [["connected","Connected"],["disconnected","Disconnected"],["error","Error"]], "value": "connected"}]
     },
     "sensors": {
-      "temperature": ["number", "Temperature", {"value": "23.5", "tooltip": "Celsius"}]
+      "temperature": ["number", "Temperature", {"value": "23.5", "help": "Celsius"}]
     }
   }
 }

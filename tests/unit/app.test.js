@@ -142,7 +142,7 @@ describe('createField', () => {
   it('creates text input with attributes', () => {
     var field = window.createField('wifi', {
       key: 'ssid', type: 'text', label: 'SSID',
-      opts: { attrs: { maxlength: '32', placeholder: 'MyNetwork' }, tooltip: 'WiFi network name' },
+      opts: { attrs: { maxlength: '32', placeholder: 'MyNetwork' }, help: 'WiFi network name' },
     })
     expect(field.tagName).toBe('DIV')
     expect(field.querySelector('label').getAttribute('for')).toBe('wifi.ssid')
@@ -207,7 +207,7 @@ describe('createField', () => {
   it('creates color input', () => {
     var field = window.createField('gpio', {
       key: 'led_color', type: 'color', label: 'LED Color',
-      opts: { value: '#ff9500', tooltip: 'RGB LED color' },
+      opts: { value: '#ff9500', help: 'RGB LED color' },
     })
     expect(field.querySelector('label').getAttribute('for')).toBe('gpio.led_color')
     var input = field.querySelector('input[type="color"]')
@@ -238,10 +238,10 @@ describe('createField', () => {
     expect(field.querySelectorAll('input + label').length).toBe(3)
   })
 
-  it('sets tooltip as small helper after input', () => {
+  it('sets helper text as small after input', () => {
     var field = window.createField('wifi', {
       key: 'ssid', type: 'text', label: 'SSID',
-      opts: { tooltip: 'Network name' },
+      opts: { help: 'Network name' },
     })
     var small = field.querySelector('small')
     expect(small).not.toBeNull()
@@ -250,7 +250,7 @@ describe('createField', () => {
     expect(field.querySelector('input').getAttribute('aria-describedby')).toBe('wifi.ssid-helper')
   })
 
-  it('does not create small helper when tooltip is omitted', () => {
+  it('does not create small helper when help is omitted', () => {
     var field = window.createField('wifi', {
       key: 'ssid', type: 'text', label: 'SSID',
     })
@@ -258,10 +258,10 @@ describe('createField', () => {
     expect(field.querySelector('input').getAttribute('aria-describedby')).toBeNull()
   })
 
-  it('does not create small helper when tooltip is empty', () => {
+  it('does not create small helper when help is empty', () => {
     var field = window.createField('wifi', {
       key: 'ssid', type: 'text', label: 'SSID',
-      opts: { tooltip: '' },
+      opts: { help: '' },
     })
     expect(field.querySelector('small')).toBeNull()
     expect(field.querySelector('input').getAttribute('aria-describedby')).toBeNull()
@@ -490,7 +490,7 @@ describe('renderForm', () => {
       {
         id: 'wifi',
         label: 'Wifi',
-        fields: [{ key: 'ssid', type: 'text', label: 'SSID', opts: { tooltip: 'Network name' } }],
+        fields: [{ key: 'ssid', type: 'text', label: 'SSID', opts: { help: 'Network name' } }],
       },
     ]
   })
@@ -1012,13 +1012,13 @@ describe('radio createField structure', () => {
     expect(field.querySelector('fieldset')).not.toBeNull()
   })
 
-  it('radio tooltip is outside fieldset inside the container div', () => {
+  it('radio helper text is outside fieldset inside the container div', () => {
     var field = window.createField('gpio', {
       key: 'pull', type: 'radio', label: 'Pull Resistor',
       opts: {
         options: [['none', 'None'], ['up', 'Up'], ['down', 'Down']],
         value: 'none',
-        tooltip: 'Select pull resistor',
+        help: 'Select pull resistor',
       },
     })
     var fieldset = field.querySelector('fieldset')

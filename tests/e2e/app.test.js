@@ -34,7 +34,7 @@ test.describe('Form rendering', () => {
     await expect(page.locator('#btn-save-apply')).toBeHidden()
   })
 
-  test('tooltip is rendered', async ({ page }) => {
+  test('helper text is rendered', async ({ page }) => {
     await page.goto('/')
     await page.locator('details#wifi summary').click()
     await expect(page.locator('[name="wifi.ssid"]')).toHaveAttribute('aria-describedby', 'wifi.ssid-helper')
