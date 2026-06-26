@@ -48,6 +48,23 @@ describe('serialize', () => {
       'wifi.led_color': '#00ff00',
     })
   })
+
+  it('returns null for indeterminate checkbox', () => {
+    window.__test.components[0].fields.push(
+      { key: 'confirm', type: 'checkbox', label: 'Confirm', opts: {} }
+    )
+    var el = document.querySelector('[name="wifi.confirm"]')
+    if (!el) {
+      el = document.createElement('input')
+      el.type = 'checkbox'
+      el.name = 'wifi.confirm'
+      el.id = 'wifi.confirm'
+      document.querySelector('#config-form').appendChild(el)
+    }
+    el.indeterminate = true
+    var data = window.serialize()
+    expect(data['wifi.confirm']).toBe(null)
+  })
 })
 
 describe('setBaseline / getPending', () => {

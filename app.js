@@ -45,7 +45,7 @@
         var field = comp.fields[fi];
         var el = configForm.querySelector('[name="' + comp.id + '.' + field.key + '"]');
         if (!el) continue;
-        data[comp.id + '.' + field.key] = field.type === 'switch' ? el.checked
+        data[comp.id + '.' + field.key] = field.type === 'checkbox' || field.type === 'switch' ? (field.type === 'checkbox' ? (el.indeterminate ? null : el.checked) : el.checked)
           : field.type === 'radio' ? (configForm.querySelector('[name="' + comp.id + '.' + field.key + '"]:checked') || {}).value || null
           : el.value;
       }
