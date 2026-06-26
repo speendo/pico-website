@@ -107,15 +107,18 @@ use that directly. Otherwise fall back to `labelFromKey(key)`.
 ```json
 {
   "wifi": {
-    "_label": "Wi-Fi Configuration",
+    "label": "Wi-Fi Configuration",
     "ssid": ["text", "SSID", {"value": "MyNetwork"}]
   }
 }
 ```
 
-Meta key `_label` fits the existing `_`-prefix convention for metadata.
+The `"label"` key is reserved at the group level. It overrides the auto-derived
+label from `labelFromKey()`. When absent, the existing key-name derivation applies.
+Unlike `_dirty` (a wire-protocol envelope key), `"label"` lives inside the group
+object and is a user-facing attribute, so it does not need the `_` prefix.
 
-**Changes:** 2-3 lines in `processSettings`.
+**Changes:** 4 lines in `processSettings` and `processStatus`.
 
 ### 6. Reset to saved state
 
@@ -137,6 +140,8 @@ This would make it a real feature.
 - Test server: already exists
 
 ### 7. Checkbox re-implementation (third indeterminate state)
+
+**Status:** Completed — 2026-06-26
 
 **What:** Bring back `<input type="checkbox">` as a distinct field type from
 `switch`, justified by the third **indeterminate** state.
@@ -254,12 +259,12 @@ GitHub/docs ───────> (can be done anytime, best after features sta
 
 ## Recommended Order
 
-1. Doc tidy (clean slate, makes everything easier to find)
-2. Validation fix (quick bug fix, unblocks nothing but annoying)
-3. Group name labels (trivial, 5-minute change)
+1. ~~Doc tidy~~ ✅ (completed 2026-06-24)
+2. ~~Validation fix~~ ✅ (resolved 2026-06-25)
+3. ~~Group name labels~~ ✅ (completed 2026-06-26)
 4. Nav image/favicon (trivial, 5-minute change)
 5. Edge cases audit (important before backend, could catch JS protocol issues)
-6. Checkbox revival (pure client, no backend dependency)
+6. ~~Checkbox revival~~ ✅ (completed 2026-06-26)
 7. ESP32 backend (biggest item, enables everything else)
 8. Reset button (needs backend)
 9. Reboot (needs backend)

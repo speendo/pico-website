@@ -45,6 +45,7 @@ HTTP used only for persistence:
 {
   "_dirty": false,
   "wifi": {
+    "label": "Wi-Fi",
     "ssid":     ["text", "SSID",     {"value": "MyNetwork", "tooltip": "WiFi network name \u2014 required, 1\u201332 characters"}],
     "password": ["password", "Password", {"value": "", "attrs": {"maxlength": 64}, "tooltip": "WiFi password \u2014 required, up to 64 characters"}],
     "mode":     ["select", "Mode",   {"value": "station", "options": [["station","Station"],["ap","Access Point"]]}]
@@ -81,7 +82,11 @@ Each key under a component group is a 3-element array:
 
 ### Naming conventions
 
-- Component group labels are derived from top-level keys using this algorithm:
+- Component group labels default to the auto-derived name from the top-level key
+  (see algorithm below), but can be overridden with an optional `"label"` key at
+  the group level. When `"label"` is present, it is used directly and the key-name
+  derivation is skipped. Example: `"wifi": {"label": "Wi-Fi", "ssid": [...]}`.
+- Group label derivation algorithm (used when no `"label"` key is present):
   1. Split on underscores, hyphens, or camelCase boundaries
   2. Capitalize the first letter of each word
   3. Join with spaces
@@ -93,8 +98,8 @@ Each key under a component group is a 3-element array:
 ### Component discovery
 
 No manifest. The JS iterates top-level keys in the response, skipping `_`-prefixed
-keys. Each key becomes an accordion section. The section label is derived from
-the key name via case conversion.
+keys. Each key becomes an accordion section. The section label is the group-level
+`"label"` value if present, otherwise derived from the key name via case conversion.
 
 ---
 
