@@ -24,8 +24,8 @@ SETTINGS = {
         "pin": ["number", "Pin Number", {"attrs": {"min": 0, "max": 39, "placeholder": "0"}, "value": 2, "help": "GPIO pin number 0–39"}],
         "direction": ["select", "Direction", {"options": [["input", "Input"], ["output", "Output"]], "value": "output", "help": "Pin direction: Input or Output"}],
         "pull": ["radio", "Pull Resistor", {"options": [["none", "None"], ["up", "Pull Up"], ["down", "Pull Down"]], "value": "none", "help": "Internal pull resistor: None, Pull Up, or Pull Down"}],
-        "enabled": ["switch", "GPIO Enabled", {"value": True, "help": "Enable this GPIO pin"}],
-        "inverted": ["switch", "Inverted", {"value": False, "help": "Invert GPIO signal level"}],
+        "enabled": ["checkbox", "GPIO Enabled", {"value": True, "help": "Enable this GPIO pin"}],
+        "inverted": ["checkbox", "Inverted", {"value": False, "help": "Invert GPIO signal level"}],
         "led_color": ["color", "LED Color", {"value": "#ff9500", "help": "RGB LED color"}],
         "initial": ["select", "Initial State", {"options": [["low", "Low"], ["high", "High"]], "value": "low", "help": "Initial output state: Low or High"}],
     },
@@ -44,6 +44,7 @@ SETTINGS = {
         "recipient":    ["email", "Recipient Email",{"attrs": {"required": True, "placeholder": "admin@example.com"}, "value": "admin@example.com", "help": "Alert destination address — required, valid email"}],
         "min_interval": ["range", "Min Interval (s)", {"attrs": {"min": 30, "max": 3600, "step": 30}, "value": 300, "help": "Minimum time between alerts — 30–3600s, steps of 30"}],
         "enabled":      ["switch", "Alerts Enabled", {"value": False, "help": "Enable email notifications"}],
+        "confirm":      ["checkbox", "Confirm Alerts", {"value": None, "help": "Explicitly enable or disable alerts"}],
     },
 }
 
