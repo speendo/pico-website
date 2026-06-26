@@ -9,13 +9,14 @@ checked nor unchecked. For settings where the user must explicitly choose (no
 safe default), the indeterminate checkbox signals that the field requires
 attention.
 
-Additionally, PicoCSS v2.1.1 provides `<small>` helper text styling for
-`<input>`, `<textarea>`, and `<select>` via its global `small` rule, but its
-`margin-top: calc(var(--pico-spacing) * -0.75)` negative margin assumes the
-helper sits directly after a block-level input. For inline elements
-(checkbox, radio, switch, range) and for `<select>` inside a `<div>` wrapper,
-this negative margin creates visual gaps. A targeted CSS rule normalises the
-helper text appearance for these types.
+PicoCSS v2.1.1 styles `<small>` globally (`display: block; color:
+var(--pico-muted-color); margin-top: calc(var(--pico-spacing) * -0.75)`).
+This works well when `<small>` sits as a direct sibling after a block-level
+`<input>` or `<textarea>` (the documented helper text pattern). Inside our
+`<div>` wrappers, the `<small>` follows `<label>` (checkbox/switch),
+`<fieldset>` (radio), or `<select>` — the negative `margin-top` pulls it up
+awkwardly. A targeted CSS rule normalises the helper text for these element
+types.
 
 ## Wire format
 
@@ -29,16 +30,6 @@ helper text appearance for these types.
 comparisons (`String(serverVal) === String(lastSent[key])`) already
 distinguish them: `String(null)` = `"null"`, `String(true)` = `"true"`,
 `String(false)` = `"false"`.
-
-## Click behavior
-
-`indeterminate` is a JS-only property — the browser never returns a checkbox
-to indeterminate via user interaction. When the user clicks an indeterminate
-checkbox, the browser: (1) sets `indeterminate = false`, (2) sets
-`checked = true`. Subsequent clicks cycle checked ↔ unchecked.
-
-This is desirable for the "not yet set" semantics: once the user clicks, they
-have made an explicit choice and the checkbox stays binary from then on.
 
 ## DOM structure (createField)
 
