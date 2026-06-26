@@ -76,6 +76,8 @@ connected: set[WebSocket] = set()
 async def startup():
     for comp_id, fields in SETTINGS.items():
         for key, field_def in fields.items():
+            if key == "label":
+                continue
             opts = field_def[2]
             val = opts.get("value", "")
             store_key = comp_id + "." + key
@@ -83,6 +85,8 @@ async def startup():
             applied_store[store_key] = val
     for comp_id, fields in STATUS.items():
         for key, field_def in fields.items():
+            if key == "label":
+                continue
             opts = field_def[2]
             val = opts.get("value")
             if val is not None:
@@ -97,6 +101,8 @@ def build_settings():
     for comp_id, fields in SETTINGS.items():
         group = {}
         for key, field_def in fields.items():
+            if key == "label":
+                continue
             ftype, flabel, fopts = field_def
             opts = dict(fopts)
             store_key = comp_id + "." + key
@@ -119,6 +125,8 @@ def build_status():
     for comp_id, fields in STATUS.items():
         group = {}
         for key, field_def in fields.items():
+            if key == "label":
+                continue
             ftype, flabel, fopts = field_def
             opts = dict(fopts)
             if key == "uptime":
@@ -292,6 +300,8 @@ async def api_settings_reset():
     applied_store.clear()
     for comp_id, fields in SETTINGS.items():
         for key, field_def in fields.items():
+            if key == "label":
+                continue
             opts = field_def[2]
             val = opts.get("value", "")
             store_key = comp_id + "." + key

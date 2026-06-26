@@ -33,49 +33,30 @@ export PATH="/config/.nvm/versions/node/v24.17.0/bin:$PATH"
 - `npm run test:e2e` — Playwright e2e tests only
 - `npm run test:watch` — vitest in watch mode
 
-# Test Server
+# E2E Test Setup
 
-A FastAPI test server lives at `test_server/`. It auto-starts when e2e tests
-run (configured in `playwright.config.js` webServer). Start it manually:
-
-```bash
-pip install fastapi uvicorn
-uvicorn test_server.main:app --host 0.0.0.0 --port 8000
-```
-
-# Playwright E2E Tests
-
-E2e tests use Playwright against the test server. First install browsers:
+Run these once, in order:
 
 ```bash
+npm install
 npx playwright install chromium
+bash test-deps/setup.sh
+python3 -m venv .venv
+. .venv/bin/activate
+pip install -r test_server/requirements.txt
 ```
 
-Then run e2e tests (test server auto-starts):
+Then run the tests:
 
 ```bash
 npm run test:e2e
 ```
 
-The test server reset endpoint (`/api/settings/reset`) is called before each
-test via `test.beforeEach` in `tests/e2e/app.test.js`.
+Playwright config auto-starts uvicorn on port 8765 and stops it when done.
 
-# Playwright System Dependencies
+## Troubleshooting
 
-The chromium headless shell used by Playwright requires several shared
-libraries (libnss3, libnspr4, libdbus-1-3, libatk, etc.) that may not be
-installed on the system. These are provided in `test-deps/lib/`.
-
-To (re)generate `test-deps/lib/`, run the setup script (no sudo needed):
-
-```bash
-bash test-deps/setup.sh
-```
-
-This downloads the required .deb packages from `archive.ubuntu.com` and
-extracts them into `test-deps/lib/`. The `playwright.config.js` sets
-`LD_LIBRARY_PATH` to point at this directory automatically when it exists.
-
-The cached `.deb` files live in `test-deps/debs/` to avoid re-downloading. Both
-directories are safe to commit — they're platform-specific (Ubuntu Noble
-24.04 amd64) but needed for CI.
+- **Tests time out:** missing system libs — `LD_LIBRARY_PATH=test-deps/lib ldd ~/.cache/ms-playwright/chromium-*/chrome-linux/chrome | grep "not found"`. Add missing packages to `test-deps/setup.sh` and re-run.
+- **Port 8765 in use:** `kill $(ps aux | grep 'uvicorn test_server' | grep -v grep | awk '{print $2}')`
+- **uvicorn not found:** venv not activated — re-run `. .venv/bin/activate`
+- **Playwright "Executable doesn't exist":** re-run `npx playwright install chromium`

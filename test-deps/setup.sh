@@ -38,6 +38,18 @@ PACKAGES=(
     "libxcb1"
     "libxcb-randr0"
     "libxcb-render0"
+    "libcups2t64"
+    "libpango-1.0-0"
+    "libcairo2"
+    "libfribidi0"
+    "libthai0"
+    "libharfbuzz0b"
+    "libxcb-shm0"
+    "libpixman-1-0"
+    "libavahi-common3"
+    "libavahi-client3"
+    "libdatrie1"
+    "libgraphite2-3"
 )
 
 # Download and cache noble Packages files
