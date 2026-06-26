@@ -86,8 +86,17 @@
         var el = configForm.querySelector('[name="' + comp.id + '.' + field.key + '"]');
         if (!el) continue;
         var fopts = field.opts || {};
-        if (field.type === 'switch') {
+        if (field.type === 'checkbox') {
+          if (fopts.value === null) {
+            el.checked = false;
+            el.indeterminate = true;
+          } else {
+            el.checked = !!fopts.value;
+            el.indeterminate = false;
+          }
+        } else if (field.type === 'switch') {
           el.checked = !!fopts.value;
+          el.indeterminate = false;
         } else if (field.type === 'radio') {
           var radios = configForm.querySelectorAll('[name="' + comp.id + '.' + field.key + '"]');
           for (var ri = 0; ri < radios.length; ri++) {

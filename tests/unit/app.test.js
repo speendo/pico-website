@@ -427,6 +427,7 @@ describe('populateFromComponents', () => {
         <option value="ap" selected>AP</option>
       </select>
       <input type="checkbox" name="wifi.hidden" role="switch" />
+      <input type="checkbox" name="gpio.confirm" />
     `
   })
 
@@ -440,10 +441,64 @@ describe('populateFromComponents', () => {
           { key: 'hidden', type: 'switch', label: 'Hidden', opts: { value: false } },
         ],
       },
+      {
+        id: 'gpio',
+        fields: [
+          { key: 'confirm', type: 'checkbox', label: 'Confirm', opts: { value: true } },
+        ],
+      },
     ])
     expect(document.querySelector('[name="wifi.ssid"]').value).toBe('new-ssid')
     expect(document.querySelector('[name="wifi.mode"]').value).toBe('station')
     expect(document.querySelector('[name="wifi.hidden"]').checked).toBe(false)
+    var confirmEl = document.querySelector('[name="gpio.confirm"]')
+    expect(confirmEl.checked).toBe(true)
+    expect(confirmEl.indeterminate).toBe(false)
+  })
+
+  it('sets checkbox to indeterminate when value is null', () => {
+    window.populateFromComponents([
+      {
+        id: 'gpio',
+        fields: [
+          { key: 'confirm', type: 'checkbox', label: 'Confirm', opts: { value: null } },
+        ],
+      },
+    ])
+    var el = document.querySelector('[name="gpio.confirm"]')
+    expect(el.checked).toBe(false)
+    expect(el.indeterminate).toBe(true)
+  })
+
+  it('sets checkbox to unchecked when value is false', () => {
+    window.populateFromComponents([
+      {
+        id: 'gpio',
+        fields: [
+          { key: 'confirm', type: 'checkbox', label: 'Confirm', opts: { value: false } },
+        ],
+      },
+    ])
+    var el = document.querySelector('[name="gpio.confirm"]')
+    expect(el.checked).toBe(false)
+    expect(el.indeterminate).toBe(false)
+  })
+
+  it('does not set indeterminate on switch', () => {
+    var el = document.querySelector('[name="wifi.hidden"]')
+    el.indeterminate = true
+    window.populateFromComponents([
+      {
+        id: 'wifi',
+        fields: [
+          { key: 'ssid', type: 'text', label: 'SSID', opts: { value: 'x' } },
+          { key: 'mode', type: 'select', label: 'Mode', opts: { value: 'station' } },
+          { key: 'hidden', type: 'switch', label: 'Hidden', opts: { value: false } },
+        ],
+      },
+    ])
+    expect(el.checked).toBe(false)
+    expect(el.indeterminate).toBe(false)
   })
 
   it('handles empty fields gracefully', () => {
