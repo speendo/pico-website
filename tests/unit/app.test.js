@@ -1090,6 +1090,56 @@ describe('WS disconnect while in-flight', function () {
   })
 })
 
+describe('aria-busy lifecycle', function () {
+  beforeEach(function () {
+    document.querySelector('#config-form').innerHTML =
+      '<input name="wifi.ssid" value="hello" />'
+    window.__test.components = [
+      { id: 'wifi', fields: [
+        { key: 'ssid', type: 'text', label: 'SSID', opts: { value: 'hello' } },
+      ]},
+    ]
+    window.__test.lastSent = {}
+    window.__test.inFlight = {}
+    window.__test.dirty = false
+    document.getElementById('config-form').setAttribute('aria-busy', 'true')
+  })
+
+  it('clears aria-busy after reconnect settings push (no changed fields)', function () {
+    window.__test.receiveWSMessage({
+      data: JSON.stringify({
+        _dirty: false,
+        wifi: { ssid: ['text', 'SSID', { value: 'hello' }] },
+      }),
+    })
+    expect(document.getElementById('config-form').hasAttribute('aria-busy')).toBe(false)
+  })
+
+  it('clears aria-busy after reconnect with stale inFlight', function () {
+    window.__test.inFlight = { 'wifi.ssid': true }
+    window.__test.lastSent = { 'wifi.ssid': 'valueMismatch' }
+    window.__test.receiveWSMessage({
+      data: JSON.stringify({
+        _dirty: false,
+        wifi: { ssid: ['text', 'SSID', { value: 'hello' }] },
+      }),
+    })
+    expect(document.getElementById('config-form').hasAttribute('aria-busy')).toBe(false)
+  })
+
+  it('clears aria-busy after echo-matched reconnect', function () {
+    window.__test.inFlight = { 'wifi.ssid': true }
+    window.__test.lastSent = { 'wifi.ssid': 'hello' }
+    window.__test.receiveWSMessage({
+      data: JSON.stringify({
+        _dirty: false,
+        wifi: { ssid: ['text', 'SSID', { value: 'hello' }] },
+      }),
+    })
+    expect(document.getElementById('config-form').hasAttribute('aria-busy')).toBe(false)
+  })
+})
+
 describe('populateFromComponents null safety', () => {
   beforeEach(() => {
     document.querySelector('#config-form').innerHTML = '<input name="wifi.ssid" value="" />'

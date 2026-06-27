@@ -364,6 +364,7 @@
       updateAV(data);
       setBaseline();
       updateUI();
+      configForm.removeAttribute('aria-busy');
       return;
     }
 
@@ -419,7 +420,10 @@
       }
     }
 
-    if (Object.keys(changedFields).length === 0) return;
+    if (Object.keys(changedFields).length === 0) {
+      configForm.removeAttribute('aria-busy');
+      return;
+    }
 
     updateAV(data);
 
@@ -445,6 +449,7 @@
       applyAV();
       syncLS();
     }
+    configForm.removeAttribute('aria-busy');
   }
 
   /**
