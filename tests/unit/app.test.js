@@ -890,6 +890,7 @@ describe('init', () => {
 // Tests for the full onWSMessage state machine covering all 10 cases.
 describe('onWSMessage — all 10 state machine cases', () => {
   function setupCase(fv, av, ls, inflight) {
+    document.getElementById('config-form').removeAttribute('aria-busy')
     document.querySelector('#config-form').innerHTML =
       '<input name="wifi.ssid" value="' + fv + '" />'
     window.__test.components = [
@@ -1020,6 +1021,72 @@ describe('WS reconnect', () => {
   it('sets aria-busy on close', () => {
     window.onWSClose()
     expect(document.getElementById('config-form').getAttribute('aria-busy')).toBe('true')
+  })
+})
+
+describe('WS disconnect while in-flight', function () {
+  beforeEach(function () {
+    document.querySelector('#config-form').innerHTML =
+      '<input name="wifi.ssid" value="userChange" />'
+    window.__test.components = [
+      { id: 'wifi', fields: [
+        { key: 'ssid', type: 'text', label: 'SSID', opts: { value: 'serverVal' } },
+      ]},
+    ]
+    window.__test.lastSent = { 'wifi.ssid': 'userChange' }
+    window.__test.inFlight = { 'wifi.ssid': true }
+    window.__test.dirty = false
+    window.connectWS()
+    window.__test.wsReady()
+    window.__test.wsSent = null
+    window.__test.onWSSend = function (data) { window.__test.wsSent = JSON.parse(data) }
+  })
+
+  it('clears stale inFlight and re-sends pending change on reconnect', function () {
+    // Server pushes settings with the same AV as before (our change was lost)
+    window.__test.receiveWSMessage({
+      data: JSON.stringify({
+        _dirty: false,
+        wifi: { ssid: ['text', 'SSID', { value: 'serverVal' }] },
+      }),
+    })
+    // Field is re-sent so it's back in-flight
+    expect(window.__test.inFlight['wifi.ssid']).toBe(true)
+  })
+
+  it('re-sends pending form value that differs from reconnected server AV', function () {
+    window.__test.receiveWSMessage({
+      data: JSON.stringify({
+        _dirty: false,
+        wifi: { ssid: ['text', 'SSID', { value: 'serverVal' }] },
+      }),
+    })
+    expect(window.__test.wsSent).toEqual({
+      action: 'apply',
+      data: { wifi: { ssid: ['text', 'SSID', { value: 'userChange' }] } },
+    })
+  })
+
+  it('does not re-send when form value matches reconnected server AV', function () {
+    document.querySelector('#config-form').innerHTML =
+      '<input name="wifi.ssid" value="serverVal" />'
+    window.__test.receiveWSMessage({
+      data: JSON.stringify({
+        _dirty: false,
+        wifi: { ssid: ['text', 'SSID', { value: 'serverVal' }] },
+      }),
+    })
+    expect(window.__test.wsSent).toBeNull()
+  })
+
+  it('syncs lastSent after reconnect reconciliation', function () {
+    window.__test.receiveWSMessage({
+      data: JSON.stringify({
+        _dirty: false,
+        wifi: { ssid: ['text', 'SSID', { value: 'serverVal' }] },
+      }),
+    })
+    expect(window.__test.lastSent['wifi.ssid']).toBe('userChange')
   })
 })
 
@@ -1327,6 +1394,7 @@ describe('readFormValue', () => {
 
 describe('dirty flag survives dropped WS messages', () => {
   beforeEach(() => {
+    document.getElementById('config-form').removeAttribute('aria-busy')
     document.querySelector('#config-form').innerHTML = [
       '<input type="radio" name="gpio.pull" value="none" checked />',
       '<input type="radio" name="gpio.pull" value="up" />',

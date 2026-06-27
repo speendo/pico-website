@@ -369,7 +369,29 @@
 
     var hasInFlight = false;
     for (var k in inFlight) { if (inFlight[k]) { hasInFlight = true; break; } }
-    if (hasInFlight) return;
+    if (hasInFlight && configForm.getAttribute('aria-busy') !== 'true') return;
+    if (hasInFlight) {
+      dirty = msg._dirty;
+      updateAV(data);
+      for (var sk in inFlight) { inFlight[sk] = false; }
+      for (var sk in lastSent) { lastSent[sk] = undefined; }
+      for (var ci = 0; ci < components.length; ci++) {
+        var comp = components[ci];
+        if (!comp.fields) continue;
+        for (var fi = 0; fi < comp.fields.length; fi++) {
+          var field = comp.fields[fi];
+          var key = comp.id + '.' + field.key;
+          var fv = readFormValue([comp.id, field.key]);
+          if (fv !== undefined && String(fv) !== String(field.opts.value)) {
+            sendToServer(key, fv);
+          }
+        }
+      }
+      setBaseline();
+      updateUI();
+      configForm.removeAttribute('aria-busy');
+      return;
+    }
 
     dirty = msg._dirty;
 
