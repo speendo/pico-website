@@ -29,7 +29,7 @@ describe('serialize', () => {
       'wifi.ssid': '',
       'wifi.mode': 'station',
       'wifi.hidden': false,
-      'wifi.channel': '6',
+      'wifi.channel': 6,
       'wifi.led_color': '#ff9500',
     })
   })
@@ -44,7 +44,7 @@ describe('serialize', () => {
       'wifi.ssid': 'MyNet',
       'wifi.mode': 'ap',
       'wifi.hidden': true,
-      'wifi.channel': '6',
+      'wifi.channel': 6,
       'wifi.led_color': '#00ff00',
     })
   })
@@ -64,6 +64,24 @@ describe('serialize', () => {
     el.indeterminate = true
     var data = window.serialize()
     expect(data['wifi.confirm']).toBe(null)
+  })
+
+  it('returns number for number input (not string)', function () {
+    document.querySelector('#config-form').innerHTML =
+      '<input type="number" name="wifi.channel" value="7" />'
+    window.__test.components[0].fields[0] =
+      { key: 'channel', type: 'number', label: 'Channel', opts: {} }
+    var data = window.serialize()
+    expect(data['wifi.channel']).toBe(7)
+  })
+
+  it('returns number for range input (not string)', function () {
+    document.querySelector('#config-form').innerHTML =
+      '<input type="range" name="wifi.power" value="50" />'
+    window.__test.components[0].fields[0] =
+      { key: 'power', type: 'range', label: 'Power', opts: {} }
+    var data = window.serialize()
+    expect(data['wifi.power']).toBe(50)
   })
 })
 
