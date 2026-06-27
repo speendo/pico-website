@@ -461,6 +461,7 @@
       var comp = components[ci];
       var sGroup = data[comp.id];
       if (!sGroup) continue;
+      if (!comp.fields) continue;
       for (var fi = 0; fi < comp.fields.length; fi++) {
         var field = comp.fields[fi];
         var sField = sGroup[field.key];
@@ -483,7 +484,9 @@
    */
   function syncLS() {
     for (var ci = 0; ci < components.length; ci++) {
-      for (var fi = 0; fi < components[ci].fields.length; fi++) {
+      var fs = components[ci].fields;
+      if (!fs) continue;
+      for (var fi = 0; fi < fs.length; fi++) {
         var key = components[ci].id + '.' + components[ci].fields[fi].key;
         lastSent[key] = components[ci].fields[fi].opts.value;
       }

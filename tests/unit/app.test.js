@@ -1158,6 +1158,31 @@ describe('aria-busy lifecycle', function () {
   })
 })
 
+describe('null-guard: syncLS and updateAV', function () {
+  var origComponents;
+  beforeEach(function () {
+    origComponents = window.__test.components;
+    window.__test.components = [
+      { id: 'wifi', fields: null },
+    ]
+    window.__test.lastSent = {}
+    window.__test.inFlight = {}
+  })
+  afterEach(function () {
+    window.__test.components = origComponents;
+  })
+
+  it('syncLS does not throw when component has no fields', function () {
+    expect(function () { window.syncLS() }).not.toThrow()
+  })
+
+  it('updateAV does not throw when component has no fields', function () {
+    expect(function () {
+      window.updateAV({ wifi: { ssid: ['text', 'SSID', { value: 'x' }] } })
+    }).not.toThrow()
+  })
+})
+
 describe('populateFromComponents null safety', () => {
   beforeEach(() => {
     document.querySelector('#config-form').innerHTML = '<input name="wifi.ssid" value="" />'
