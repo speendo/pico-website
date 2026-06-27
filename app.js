@@ -434,10 +434,13 @@
       }
     }
 
+    var notifBar = document.getElementById('server-changed');
+    var promptActive = notifBar && !notifBar.hidden;
+
     if (conflicts.length > 0) {
-      showConflictPrompt(conflicts);
+      if (!promptActive) showConflictPrompt(conflicts);
     } else if (externalFields.length > 0) {
-      showExternalNotification(externalFields);
+      if (!promptActive) showExternalNotification(externalFields);
     } else {
       applyAV();
       syncLS();

@@ -1423,6 +1423,66 @@ describe('dirty flag survives dropped WS messages', () => {
   })
 })
 
+describe('settings push during visible prompt', function () {
+  beforeEach(function () {
+    document.querySelector('#config-form').innerHTML =
+      '<input name="wifi.ssid" value="myLocal" />'
+    window.__test.components = [
+      { id: 'wifi', fields: [
+        { key: 'ssid', type: 'text', label: 'SSID', opts: { value: 'oldVal' } },
+      ]},
+    ]
+    window.__test.lastSent = { 'wifi.ssid': 'oldVal' }
+    window.__test.inFlight = {}
+    window.__test.dirty = false
+    document.getElementById('server-changed').hidden = true
+    document.getElementById('notif-load').hidden = true
+    document.getElementById('notif-keep').hidden = true
+    document.getElementById('notif-keep-local').hidden = true
+    document.getElementById('notif-accept-server').hidden = true
+  })
+
+  it('does not overwrite visible conflict prompt with a new one', function () {
+    window.__test.receiveWSMessage({
+      data: JSON.stringify({
+        _dirty: false,
+        wifi: { ssid: ['text', 'SSID', { value: 'externalVal' }] },
+      }),
+    })
+    expect(document.getElementById('notif-keep-local').hidden).toBe(false)
+    window.__test.receiveWSMessage({
+      data: JSON.stringify({
+        _dirty: false,
+        wifi: { ssid: ['text', 'SSID', { value: 'thirdVal' }] },
+      }),
+    })
+    expect(window.__test.components[0].fields[0].opts.value).toBe('thirdVal')
+    expect(document.getElementById('notif-keep-local').hidden).toBe(false)
+  })
+
+  it('does not overwrite visible external notification with a conflict prompt', function () {
+    document.querySelector('#config-form').innerHTML =
+      '<input name="wifi.ssid" value="oldVal" />'
+    window.__test.receiveWSMessage({
+      data: JSON.stringify({
+        _dirty: false,
+        wifi: { ssid: ['text', 'SSID', { value: 'extVal' }] },
+      }),
+    })
+    expect(document.getElementById('notif-load').hidden).toBe(false)
+    window.__test.receiveWSMessage({
+      data: JSON.stringify({
+        _dirty: false,
+        wifi: { ssid: ['text', 'SSID', { value: 'thirdVal' }] },
+      }),
+    })
+    expect(document.getElementById('notif-load').hidden).toBe(false)
+    expect(document.getElementById('notif-keep').hidden).toBe(false)
+    expect(document.getElementById('notif-keep-local').hidden).toBe(true)
+    expect(document.getElementById('notif-accept-server').hidden).toBe(true)
+  })
+})
+
 describe('echo resolution with radio does not trigger spurious queued keys', () => {
   beforeEach(() => {
     document.querySelector('#config-form').innerHTML = [
